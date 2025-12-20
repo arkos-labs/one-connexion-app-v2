@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
 import { Truck, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MainLayout } from "@/components/layout/MainLayout";
+
 import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
-    <MainLayout>
+    <div className="bg-background">
       <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
         {/* Logo */}
         <motion.div
@@ -60,7 +60,7 @@ const Index = () => {
           v2.0.0 • Premium Edition
         </motion.p>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

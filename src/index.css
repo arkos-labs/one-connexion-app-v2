@@ -83,7 +83,7 @@
     }
 
     .dark {
-        /* Same as root - dark by default */
+        color-scheme: dark;
     }
 }
 

@@ -40,5 +40,9 @@ export const AuthGuard = ({ children, requireAuth = true }: AuthGuardProps) => {
     return <SplashScreen />;
   }
 
+  if (requireAuth && !isAuthenticated) {
+    return null;
+  }
+
   return <>{children}</>;
 };
