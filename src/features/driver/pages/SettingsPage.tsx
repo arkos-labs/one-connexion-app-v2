@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 
 export const SettingsPage = () => {
-    const { user, preferences, updatePreference, logout } = useAppStore();
+    const { user, preferences, updatePreference, logout, currentOrder } = useAppStore();
 
     const handleNavigationChange = (value: string) => {
         updatePreference('navigationApp', value);
@@ -34,6 +34,17 @@ export const SettingsPage = () => {
             title: checked ? "Acceptation Auto activée ⚡" : "Acceptation Auto désactivée",
             description: checked ? "Les courses proches seront acceptées automatiquement." : "Vous devrez accepter chaque course manuellement."
         });
+    };
+
+    const handleLogout = () => {
+        const success = logout();
+        if (!success) {
+            toast({
+                title: "Action refusée",
+                description: "Veuillez terminer votre course active avant de vous déconnecter.",
+                variant: "destructive",
+            });
+        }
     };
 
     return (
@@ -187,7 +198,7 @@ export const SettingsPage = () => {
                     <Button
                         variant="destructive"
                         className="w-full h-12 text-base font-semibold shadow-sm"
-                        onClick={logout}
+                        onClick={handleLogout}
                     >
                         <LogOut className="mr-2 h-5 w-5" />
                         Se déconnecter

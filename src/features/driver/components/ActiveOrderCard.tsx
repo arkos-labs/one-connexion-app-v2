@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Navigation, MapPin, User, Clock, CheckCircle, XCircle, MoreVertical, MessageSquare, Headset, ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { Phone, Navigation, MapPin, User, Clock, CheckCircle, XCircle, MoreVertical, MessageSquare, Headset, ChevronDown, ChevronUp, Lock, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Order } from "@/types";
 import { useAppPreferences } from "@/hooks/useAppPreferences";
 import { useAppStore } from "@/stores/useAppStore";
 import { cn } from "@/lib/utils";
-import { ProofOfDeliveryModal } from "./ProofOfDeliveryModal";
+import { ProofOfDeliveryDrawer } from "./ProofOfDeliveryDrawer";
 
 // Utilitaires de distance simple (Haversine simplifié)
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -35,10 +35,11 @@ interface ActiveOrderCardProps {
 
 export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrderCardProps) => {
   const { openGPS } = useAppPreferences();
-  const { driverLocation } = useAppStore();
+  const { driverLocation, completeOrder } = useAppStore();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [sliderConfirmed, setSliderConfirmed] = useState(false);
-  const [isProofModalOpen, setIsProofModalOpen] = useState(false); // New State
+  const [isProofModalOpen, setIsProofModalOpen] = useState(false);
+  const [forceNearby, setForceNearby] = useState(false); // Mode test
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +54,7 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
     );
   }, [driverLocation, targetLocation]);
 
-  const isNearby = distanceToTarget < 200; // 200 mètres
+  const isNearby = forceNearby || distanceToTarget < 200; // 200 mètres OU mode forcé
 
   const statusConfig = isPickupPhace ? {
     title: "En route vers le retrait",
@@ -71,9 +72,14 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
     nextStatus: 'completed' as const
   };
 
-  const handleProofConfirmed = () => {
-    onStatusChange(order.id, 'completed');
-    setIsProofModalOpen(false);
+  const handleProofConfirmed = (proofType: 'signature' | 'photo', proofData: string) => {
+    console.log("Preuve capturée :", proofType, proofData); // Ici, on enverrait ça au backend
+
+    // TODO: Envoyer la preuve au backend
+    // await supabase.from('order_proofs').insert({ order_id: order.id, proof_type: proofType, proof_data: proofData })
+
+    // C'est SEULEMENT MAINTENANT qu'on termine vraiment la course
+    completeOrder();
   };
 
   const handleSlideEnd = (info: any) => {
@@ -165,13 +171,31 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
                 </div>
               </div>
 
-              <Button
-                size="icon"
-                className="h-9 w-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shrink-0"
-                onClick={() => openGPS(targetLocation.lat, targetLocation.lng)}
-              >
-                <Navigation className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="icon"
+                  className="h-9 w-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shrink-0"
+                  onClick={() => openGPS(targetLocation.lat, targetLocation.lng)}
+                >
+                  <Navigation className="h-4 w-4" />
+                </Button>
+
+                {/* Bouton Mode Test - Force la proximité */}
+                <Button
+                  size="icon"
+                  variant={forceNearby ? "default" : "outline"}
+                  className={cn(
+                    "h-9 w-9 rounded-xl shadow-sm shrink-0",
+                    forceNearby
+                      ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                      : "border-orange-200 text-orange-600 hover:bg-orange-50"
+                  )}
+                  onClick={() => setForceNearby(!forceNearby)}
+                  title={forceNearby ? "Mode test activé" : "Activer le mode test"}
+                >
+                  <Target className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
 
@@ -191,8 +215,17 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
                   "text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-2",
                   isNearby ? "text-muted-foreground/80 animate-pulse" : "text-muted-foreground/50"
                 )}>
-                  {isNearby ? statusConfig.nextAction : "Rapprochez-vous"}
-                  {!isNearby && <Lock className="h-4 w-4" />}
+                  {isNearby ? (
+                    <>
+                      {statusConfig.nextAction}
+                      {forceNearby && <Target className="h-4 w-4 text-orange-500" />}
+                    </>
+                  ) : (
+                    <>
+                      Rapprochez-vous
+                      <Lock className="h-4 w-4" />
+                    </>
+                  )}
                 </span>
               </div>
 
@@ -218,7 +251,7 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
         </div>
       </Card>
 
-      <ProofOfDeliveryModal
+      <ProofOfDeliveryDrawer
         isOpen={isProofModalOpen}
         onClose={() => setIsProofModalOpen(false)}
         onConfirm={handleProofConfirmed}

@@ -6,18 +6,17 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 export const DriverStatusToggle = () => {
-    const { isOnDuty, setDriverStatus, currentOrder } = useAppStore();
+    const { isOnDuty, setIsOnDuty, currentOrder } = useAppStore();
 
     const toggle = () => {
-        if (isOnDuty && currentOrder) {
+        const success = setIsOnDuty(!isOnDuty);
+        if (!success) {
             toast({
                 title: "Action refusée",
-                description: "Veuillez terminer votre course active avant de vous déconnecter.",
+                description: "Veuillez terminer votre course active avant de vous mettre hors ligne.",
                 variant: "destructive",
             });
-            return;
         }
-        setDriverStatus(isOnDuty ? "offline" : "online");
     };
 
     return (

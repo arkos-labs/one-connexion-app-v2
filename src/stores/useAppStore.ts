@@ -54,9 +54,9 @@ interface AppState {
   setIsLoading: (loading: boolean) => void;
   setSplashComplete: (complete: boolean) => void;
 
-  logout: () => void;
+  logout: () => boolean;
   setDriverStatus: (status: DriverStatus) => void;
-  setIsOnDuty: (isOnDuty: boolean) => void;
+  setIsOnDuty: (isOnDuty: boolean) => boolean;
   setDriverLocation: (location: { lat: number; lng: number }) => void;
 
   acceptOrder: (orderId: string) => void;
@@ -137,22 +137,38 @@ export const useAppStore = create<AppState>()(
       setIsLoading: (isLoading) => set({ isLoading }),
       setSplashComplete: (isSplashComplete) => set({ isSplashComplete }),
 
-      logout: () => set({
-        user: null,
-        isAuthenticated: false,
-        driverStatus: "offline",
-        isOnDuty: false,
-        history: [],
-        earnings: 0,
-        currentOrder: null,
-        messages: []
-      }),
+      logout: () => {
+        const state = get();
+        // Empêcher la déconnexion si une course est en cours
+        if (state.currentOrder) {
+          return false;
+        }
+        set({
+          user: null,
+          isAuthenticated: false,
+          driverStatus: "offline",
+          isOnDuty: false,
+          history: [],
+          earnings: 0,
+          currentOrder: null,
+          messages: []
+        });
+        return true;
+      },
 
       setDriverStatus: (status) => set({ driverStatus: status, isOnDuty: status === 'online' }),
-      setIsOnDuty: (isOnDuty) => set({
-        isOnDuty,
-        driverStatus: isOnDuty ? "online" : "offline"
-      }),
+      setIsOnDuty: (isOnDuty) => {
+        const state = get();
+        // Empêcher de se mettre hors ligne si une course est en cours
+        if (!isOnDuty && state.currentOrder) {
+          return false;
+        }
+        set({
+          isOnDuty,
+          driverStatus: isOnDuty ? "online" : "offline"
+        });
+        return true;
+      },
       setDriverLocation: (loc) => set({ driverLocation: loc }),
 
       acceptOrder: (orderId) => set((state) => {
@@ -160,8 +176,7 @@ export const useAppStore = create<AppState>()(
         if (!order) return state;
         return {
           currentOrder: { ...order, status: "accepted" },
-          orders: state.orders.filter(o => o.id !== orderId),
-          driverStatus: "busy"
+          orders: state.orders.filter(o => o.id !== orderId)
         };
       }),
 

@@ -4,9 +4,10 @@ import { useAppStore } from "@/stores/useAppStore";
 import { MapPin, Navigation } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 export const DriverTopBar = () => {
-    const { driverStatus, setDriverStatus, currentOrder } = useAppStore();
+    const { driverStatus, setIsOnDuty, currentOrder } = useAppStore();
     const location = useLocation();
 
     const isOnline = driverStatus === 'online';
@@ -16,7 +17,14 @@ export const DriverTopBar = () => {
     const hasActiveRide = currentOrder && (currentOrder.status === 'accepted' || currentOrder.status === 'in_progress');
 
     const handleStatusToggle = (checked: boolean) => {
-        setDriverStatus(checked ? 'online' : 'offline');
+        const success = setIsOnDuty(checked);
+        if (!success) {
+            toast({
+                title: "Action refusée",
+                description: "Veuillez terminer votre course active avant de vous mettre hors ligne.",
+                variant: "destructive",
+            });
+        }
     };
 
     return (

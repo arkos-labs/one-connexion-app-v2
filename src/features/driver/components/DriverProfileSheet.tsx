@@ -19,7 +19,8 @@ export const DriverProfileSheet = ({ isOpen, onClose }: DriverProfileSheetProps)
         preferences,
         updatePreference,
         updateDocumentStatus,
-        logout
+        logout,
+        currentOrder
     } = useAppStore();
 
     if (!isOpen) return null;
@@ -165,9 +166,17 @@ export const DriverProfileSheet = ({ isOpen, onClose }: DriverProfileSheetProps)
                             variant="destructive"
                             className="w-full mt-4"
                             onClick={() => {
-                                logout();
-                                onClose();
-                                toast({ title: "Déconnexion", description: "À bientôt !" });
+                                const success = logout();
+                                if (success) {
+                                    onClose();
+                                    toast({ title: "Déconnexion", description: "À bientôt !" });
+                                } else {
+                                    toast({
+                                        title: "Action refusée",
+                                        description: "Veuillez terminer votre course active avant de vous déconnecter.",
+                                        variant: "destructive",
+                                    });
+                                }
                             }}
                         >
                             Se déconnecter

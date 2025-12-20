@@ -21,6 +21,7 @@ import { useAppStore } from "@/stores/useAppStore";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
 
 // Items réduits : Historique, Documents, Préférences, Aide
 const MENU_ITEMS = [
@@ -31,10 +32,21 @@ const MENU_ITEMS = [
 ];
 
 export function AppSidebar() {
-    const { user, history, logout } = useAppStore();
+    const { user, history, logout, currentOrder } = useAppStore();
 
     // Mock Rating (car pas encore dans user)
     const rating = 4.92;
+
+    const handleLogout = () => {
+        const success = logout();
+        if (!success) {
+            toast({
+                title: "Action refusée",
+                description: "Veuillez terminer votre course active avant de vous déconnecter.",
+                variant: "destructive",
+            });
+        }
+    };
 
     return (
         <Sidebar>
@@ -83,7 +95,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton
-                            onClick={logout}
+                            onClick={handleLogout}
                             size="lg"
                             className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 w-full justify-center gap-2 font-semibold"
                         >
