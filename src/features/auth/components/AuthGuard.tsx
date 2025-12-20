@@ -1,48 +1,20 @@
-import { ReactNode, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAppStore } from "@/stores/useAppStore";
-import { SplashScreen } from "@/components/ui/SplashScreen";
+import { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAppStore } from '@/stores/useAppStore';
 
-interface AuthGuardProps {
-  children: ReactNode;
-  requireAuth?: boolean;
-}
-
-export const AuthGuard = ({ children, requireAuth = true }: AuthGuardProps) => {
+export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated } = useAppStore();
   const navigate = useNavigate();
-  const {
-    isAuthenticated,
-    isLoading,
-    setIsLoading,
-    isSplashComplete,
-    setSplashComplete
-  } = useAppStore();
+  const location = useLocation();
 
   useEffect(() => {
-    // Simulate initial auth check
-    const timer = setTimeout(() => {
-      setSplashComplete(true);
-      setIsLoading(false);
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [setSplashComplete, setIsLoading]);
-
-  useEffect(() => {
-    if (isSplashComplete && !isLoading) {
-      if (requireAuth && !isAuthenticated) {
-        navigate("/auth/login", { replace: true });
-      }
+    if (!isAuthenticated) {
+      // Redirige vers login en mémorisant d'où on vient
+      navigate('/login', { state: { from: location }, replace: true });
     }
-  }, [isSplashComplete, isLoading, isAuthenticated, requireAuth, navigate]);
+  }, [isAuthenticated, navigate, location]);
 
-  if (!isSplashComplete) {
-    return <SplashScreen />;
-  }
-
-  if (requireAuth && !isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return <>{children}</>;
 };

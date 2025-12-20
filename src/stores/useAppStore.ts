@@ -13,10 +13,9 @@ interface User {
   avatarUrl?: string;
 }
 
-// 1. Nouvelles Interfaces
 export interface DriverDocument {
   id: string;
-  name: string; // ex: "Permis de conduire", "Assurance"
+  name: string;
   status: 'verified' | 'pending' | 'expired' | 'missing';
   expiryDate?: string;
 }
@@ -26,32 +25,29 @@ export interface DriverPreferences {
   navigationApp: "waze" | "google_maps" | "apple_maps";
   soundEnabled: boolean;
   darkMode: boolean;
-  autoAccept: boolean; // NOUVEAU
+  autoAccept: boolean;
 }
 
 interface AppState {
-  // Auth
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isSplashComplete: boolean;
 
-  // Driver State
   driverStatus: DriverStatus;
   isOnDuty: boolean;
   driverLocation: { lat: number; lng: number };
 
-  // Data State
   orders: Order[];
   currentOrder: Order | null;
   history: Order[];
   earnings: number;
   lastCompletedOrder: Order | null;
 
-  // 2. Nouveaux États
   vehicle: { model: string; plate: string; color: string } | null;
   documents: DriverDocument[];
   preferences: DriverPreferences;
+  messages: any[];
 
   // Actions
   setUser: (user: User | null) => void;
@@ -63,7 +59,6 @@ interface AppState {
   setIsOnDuty: (isOnDuty: boolean) => void;
   setDriverLocation: (location: { lat: number; lng: number }) => void;
 
-  // Workflow Actions
   acceptOrder: (orderId: string) => void;
   updateOrderStatus: (status: Order['status']) => void;
   completeOrder: () => void;
@@ -71,12 +66,13 @@ interface AppState {
   triggerNewOrder: () => void;
   clearSummary: () => void;
 
-  // Preferences Actions
   updatePreferences: (prefs: Partial<DriverPreferences>) => void;
-
-  // 3. Nouvelles Actions (from User Request + existing updatePreferences)
-  updatePreference: (key: keyof DriverPreferences, value: any) => void; // Keep simpler version for UI binding
+  updatePreference: (key: keyof DriverPreferences, value: any) => void;
   updateDocumentStatus: (docId: string, status: DriverDocument['status']) => void;
+
+  // Chat Actions
+  addMessage: (text: string, sender: 'driver' | 'dispatch') => void;
+  clearMessages: () => void;
 }
 
 // MOCK DATA
@@ -103,7 +99,7 @@ const MOCK_ORDERS: Order[] = [
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -119,7 +115,6 @@ export const useAppStore = create<AppState>()(
       earnings: 0,
       lastCompletedOrder: null,
 
-      // Initialisation Mockée (Updated)
       vehicle: { model: "Toyota Prius", plate: "AB-123-CD", color: "Gris Minéral" },
       documents: [
         { id: "1", name: "Permis de conduire", status: "verified", expiryDate: "2025-01-01" },
@@ -128,6 +123,8 @@ export const useAppStore = create<AppState>()(
         { id: "5", name: "Assurance Véhicule", status: "missing" },
         { id: "4", name: "Kbis", status: "pending" },
       ],
+      messages: [],
+
       preferences: {
         vehicleType: "car",
         navigationApp: "google_maps",
@@ -147,7 +144,8 @@ export const useAppStore = create<AppState>()(
         isOnDuty: false,
         history: [],
         earnings: 0,
-        currentOrder: null
+        currentOrder: null,
+        messages: []
       }),
 
       setDriverStatus: (status) => set({ driverStatus: status, isOnDuty: status === 'online' }),
@@ -213,12 +211,10 @@ export const useAppStore = create<AppState>()(
         return { orders: [...state.orders, newOrder] };
       }),
 
-      // Update Action (Batch)
       updatePreferences: (prefs) => set((state) => ({
         preferences: { ...state.preferences, ...prefs }
       })),
 
-      // Single Key Update Action
       updatePreference: (key, value) => set((state) => ({
         preferences: { ...state.preferences, [key]: value }
       })),
@@ -226,6 +222,34 @@ export const useAppStore = create<AppState>()(
       updateDocumentStatus: (docId, status) => set((state) => ({
         documents: state.documents.map(d => d.id === docId ? { ...d, status } : d)
       })),
+
+      addMessage: (text, sender) => {
+        const newMessage = {
+          id: Math.random().toString(36).substr(2, 9),
+          sender,
+          text,
+          timestamp: new Date().toISOString()
+        };
+
+        set((state) => ({ messages: [...state.messages, newMessage] }));
+
+        if (sender === 'driver') {
+          setTimeout(() => {
+            const responses = [
+              "Bien reçu 10-4. On note l'information.",
+              "C'est noté. Restez en attente.",
+              "Nous contactons le client pour vous.",
+              "Merci pour le signalement. Continuez la mission.",
+              "Pouvez-vous confirmer votre position ?",
+              "Information transmise au superviseur."
+            ];
+            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+            get().addMessage(randomResponse, 'dispatch');
+          }, 4000);
+        }
+      },
+
+      clearMessages: () => set({ messages: [] }),
     }),
     {
       name: "one-connexion-store-v3",
@@ -234,10 +258,9 @@ export const useAppStore = create<AppState>()(
         isAuthenticated: state.isAuthenticated,
         history: state.history,
         earnings: state.earnings,
-        currentOrder: state.currentOrder,
         preferences: state.preferences,
-        documents: state.documents, // Add documents to persistence
-        vehicle: state.vehicle // Add vehicle to persistence
+        documents: state.documents,
+        vehicle: state.vehicle
       }),
     }
   )

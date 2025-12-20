@@ -1,166 +1,169 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Eye, EyeOff, Lock, Mail, ChevronRight, Loader2 } from "lucide-react";
+import { useAppStore } from "@/stores/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { useAppStore } from "@/stores/useAppStore";
+import { Loader2, Lock, Mail, Eye, EyeOff, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 
 const Login = () => {
     const navigate = useNavigate();
-    const { toast } = useToast();
-    const { setUser, setSplashComplete } = useAppStore();
+    const { setUser } = useAppStore(); // Assuming login action is effectively setUser based on store provided earlier or need to extract it
 
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+
     const [formData, setFormData] = useState({
-        email: "driver@one-connexion.com", // Pré-rempli pour la démo
-        password: ""
+        email: "coursier@demo.com", // Pré-rempli pour la démo
+        password: "password123"
     });
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simulation d'appel API
+        // Simulation d'un appel API réseau
         setTimeout(() => {
-            setIsLoading(false);
+            // Validation simple pour la démo
+            if (formData.email && formData.password.length >= 6) {
 
-            if (formData.password.length < 4) {
-                toast({
-                    variant: "destructive",
-                    title: "Erreur de connexion",
-                    description: "Le mot de passe est trop court.",
+                // Connexion via le store
+                setUser({
+                    id: "driver-123",
+                    email: formData.email,
+                    fullName: "Thomas Anderson",
+                    role: "driver"
                 });
-                return;
+
+                toast.success("Bon retour parmi nous !", {
+                    description: "Connexion sécurisée établie."
+                });
+
+                // Redirection vers l'espace chauffeur
+                navigate("/driver");
+            } else {
+                toast.error("Échec de connexion", {
+                    description: "Vérifiez vos identifiants."
+                });
             }
-
-            // Succès : On met à jour le Store
-            setUser({
-                id: "driver-01",
-                email: formData.email,
-                fullName: "Thomas Anderson",
-                role: "driver",
-                avatarUrl: "https://github.com/shadcn.png"
-            });
-
-            // On s'assure que le splash screen ne bloque pas
-            setSplashComplete(true);
-
-            toast({
-                title: "Connexion réussie",
-                description: "Bienvenue sur le réseau One Connexion.",
-                className: "bg-green-600 text-white border-none"
-            });
-
-            navigate("/driver");
+            setIsLoading(false);
         }, 1500);
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-background relative overflow-hidden">
-            {/* Background Animé (Abstrait) */}
-            <div className="absolute inset-0 z-0">
-                <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-blue-500/10 blur-[100px] animate-pulse" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-purple-500/10 blur-[100px] animate-pulse" style={{ animationDelay: "2s" }} />
+        <div className="min-h-screen w-full flex">
+
+            {/* CÔTÉ GAUCHE : Image / Branding (Caché sur mobile) */}
+            <div className="hidden lg:flex w-1/2 bg-zinc-900 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20 mix-blend-overlay z-10" />
+                <img
+                    src="https://images.unsplash.com/photo-1616401784845-18088ae9123c?q=80&w=1000&auto=format&fit=crop"
+                    alt="Courier working"
+                    className="w-full h-full object-cover opacity-60"
+                />
+                <div className="absolute bottom-10 left-10 z-20 text-white">
+                    <h2 className="text-4xl font-bold mb-2">One Connexion</h2>
+                    <p className="text-zinc-300 text-lg max-w-md">
+                        Rejoignez l'élite des coursiers. Gérez vos livraisons, suivez vos revenus et profitez d'une liberté totale.
+                    </p>
+                </div>
             </div>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="z-10 w-full max-w-md px-4"
-            >
-                <div className="mb-8 text-center">
-                    <h1 className="text-4xl font-black tracking-tighter bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        ONE CONNEXION
-                    </h1>
-                    <p className="text-muted-foreground mt-2">Application Chauffeur v2.0</p>
-                </div>
+            {/* CÔTÉ DROIT : Formulaire */}
+            <div className="flex-1 flex items-center justify-center p-8 bg-background">
+                <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
 
-                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl">
-                    <CardHeader className="space-y-1">
-                        <CardTitle className="text-2xl font-bold text-center">Identifiez-vous</CardTitle>
-                        <CardDescription className="text-center">
-                            Entrez vos identifiants pour accéder à la flotte
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleLogin} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email Professionnel</Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="nom@exemple.com"
-                                        className="pl-9 bg-background/50"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                            </div>
+                    {/* Header Mobile */}
+                    <div className="text-center lg:text-left">
+                        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground mb-4 shadow-lg shadow-primary/30">
+                            <Lock className="h-6 w-6" />
+                        </div>
+                        <h1 className="text-3xl font-bold tracking-tight">Espace Coursier</h1>
+                        <p className="text-muted-foreground mt-2">Connectez-vous pour commencer votre service.</p>
+                    </div>
 
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <Label htmlFor="password">Mot de passe</Label>
-                                    <a href="#" className="text-xs text-primary hover:underline">Oublié ?</a>
-                                </div>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        id="password"
-                                        type={showPassword ? "text" : "password"}
-                                        className="pl-9 bg-background/50 pr-9"
-                                        placeholder="••••••••"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        required
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                                    >
-                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                    </button>
-                                </div>
-                            </div>
+                    <form onSubmit={handleLogin} className="space-y-6">
 
-                            <Button
-                                type="submit"
-                                className="w-full h-11 text-base font-medium shadow-lg hover:shadow-xl transition-all mt-4 bg-gradient-to-r from-blue-600 to-blue-700"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Connexion...
-                                    </>
-                                ) : (
-                                    <>
-                                        Se connecter <ChevronRight className="ml-2 h-4 w-4" />
-                                    </>
-                                )}
-                            </Button>
-                        </form>
-
-                        <div className="mt-6 text-center text-xs text-muted-foreground">
-                            <p>En vous connectant, vous acceptez nos</p>
-                            <div className="flex justify-center gap-2 mt-1">
-                                <a href="#" className="underline hover:text-primary">Conditions Générales</a>
-                                <span>•</span>
-                                <a href="#" className="underline hover:text-primary">Politique de Confidentialité</a>
+                        {/* Email */}
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email professionnel</Label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    placeholder="nom@exemple.com"
+                                    className="pl-10 h-11 bg-secondary/30"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    required
+                                />
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
-            </motion.div>
+
+                        {/* Mot de passe */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="password">Mot de passe</Label>
+                                <a href="#" className="text-xs font-medium text-primary hover:underline">Oublié ?</a>
+                            </div>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="password"
+                                    type={showPassword ? "text" : "password"}
+                                    className="pl-10 pr-10 h-11 bg-secondary/30"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Bouton Action */}
+                        <Button
+                            type="submit"
+                            className="w-full h-12 text-base shadow-lg shadow-primary/20 transition-all hover:scale-[1.01]"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                    Connexion...
+                                </>
+                            ) : (
+                                <>
+                                    Accéder à mon compte
+                                    <ChevronRight className="ml-2 h-5 w-5" />
+                                </>
+                            )}
+                        </Button>
+                    </form>
+
+                    {/* Footer Inscription */}
+                    <div className="text-center pt-4">
+                        <p className="text-sm text-muted-foreground">
+                            Pas encore partenaire ?{" "}
+                            <a href="#" className="font-semibold text-primary hover:underline">Devenir coursier</a>
+                        </p>
+                    </div>
+
+                    {/* Footer Légal */}
+                    <div className="flex justify-center gap-6 pt-8 text-xs text-muted-foreground/50">
+                        <a href="#" className="hover:text-muted-foreground">Conditions</a>
+                        <a href="#" className="hover:text-muted-foreground">Confidentialité</a>
+                        <a href="#" className="hover:text-muted-foreground">Aide</a>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

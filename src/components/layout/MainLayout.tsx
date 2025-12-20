@@ -31,7 +31,7 @@ export function MainLayout({ children }: { children?: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="flex h-screen w-full bg-background overflow-hidden">
         <AppSidebar />
 
         <main className="flex-1 w-full relative flex flex-col overflow-hidden">

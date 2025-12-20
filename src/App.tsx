@@ -13,6 +13,10 @@ import { VehiclePage } from "./features/driver/pages/VehiclePage"; // Page Véhi
 import NotFound from "./pages/NotFound";
 import { RideHistorySheet } from "./features/driver/components/RideHistorySheet"; // Pour l'historique (Note: c'est un sheet, on peut faire une page wrapper si besoin)
 import { HistoryPage } from "./features/driver/pages/HistoryPage"; // Page Historique
+import Login from "./pages/Login";
+import { AuthGuard } from "./features/auth/components/AuthGuard";
+import { SettingsPage } from "./features/driver/pages/SettingsPage";
+import { SupportPage } from "./features/driver/pages/SupportPage";
 
 const queryClient = new QueryClient();
 
@@ -37,9 +41,18 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Layout Principal (Sidebar + Header) */}
-          <Route path="/" element={<MainLayout />}>
+          {/* 1. Route Publique : Login */}
+          <Route path="/login" element={<Login />} />
 
+          {/* 2. Routes Protégées (Tout le reste) */}
+          <Route
+            path="/"
+            element={
+              <AuthGuard>
+                <MainLayout />
+              </AuthGuard>
+            }
+          >
             {/* Redirection racine -> Driver */}
             <Route index element={<Navigate to="/driver" replace />} />
 
@@ -57,8 +70,8 @@ const App = () => (
             </Route>
 
             {/* --- AUTRES ROUTES --- */}
-            <Route path="settings" element={<div className="p-6">Paramètres globaux (À venir)</div>} />
-            <Route path="support" element={<div className="p-6">Support technique (À venir)</div>} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="support" element={<SupportPage />} />
           </Route>
 
           {/* Route 404 */}

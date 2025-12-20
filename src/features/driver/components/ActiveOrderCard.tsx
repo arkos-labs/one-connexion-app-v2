@@ -147,22 +147,17 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
                   </div>
 
                   <div className="flex gap-2">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-10 w-10 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground border-primary/20 shadow-sm"
-                      onClick={onChatOpen}
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-10 w-10 rounded-full bg-background/50 hover:bg-destructive hover:text-white border-destructive/20 shadow-sm"
-                      onClick={() => window.open('tel:+33100000000')}
-                    >
-                      <Headset className="h-4 w-4" />
-                    </Button>
+                    <div className="relative">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 gap-2 rounded-full border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 shadow-sm transition-colors"
+                        onClick={onChatOpen}
+                      >
+                        <Headset className="h-4 w-4" />
+                        <span className="font-semibold text-xs uppercase tracking-wide">Régulation</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
 

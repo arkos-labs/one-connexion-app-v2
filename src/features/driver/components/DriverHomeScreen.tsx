@@ -15,10 +15,13 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { RideSummary } from "./RideSummary";
 import { AnimatePresence } from "framer-motion";
 
+import { ClientChat } from "./ClientChat";
+
 export const DriverHomeScreen = () => {
   const { toggleSidebar } = useSidebar();
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const {
     orders,
@@ -157,6 +160,7 @@ export const DriverHomeScreen = () => {
         <ActiveOrderCard
           order={currentOrder}
           onStatusChange={handleOrderStatusChange}
+          onChatOpen={() => setIsChatOpen(true)}
         />
       )}
 
@@ -167,9 +171,10 @@ export const DriverHomeScreen = () => {
         )}
       </AnimatePresence>
 
-      {/* Sheets */}
+      {/* Sheets & Dialogs */}
       <RideHistorySheet isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
       <DriverSettings open={isSettingsOpen} onOpenChange={setSettingsOpen} />
+      <ClientChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
     </div>
   );
