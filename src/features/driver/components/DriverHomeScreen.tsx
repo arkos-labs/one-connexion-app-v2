@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo } from "react"; // Optimisation
 import { motion } from "framer-motion";
 import { Menu, Bell, TrendingUp, Clock, Euro, Settings, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,28 +8,39 @@ import { NewOrderModal } from "./NewOrderModal";
 import { ActiveOrderCard } from "./ActiveOrderCard";
 import { DriverMap } from "./DriverMap";
 import { useAppStore } from "@/stores/useAppStore";
-import { useDriverPosition } from "@/hooks/useDriverPosition"; // NEW HOOK
+import { useDriverPosition } from "@/hooks/useDriverPosition";
 
 export const DriverHomeScreen = () => {
   const {
     orders,
     currentOrder,
+    history,
+    earnings,
     acceptOrder,
     rejectOrder,
     updateOrderStatus,
     completeOrder,
-    earnings,
     isOnDuty,
     driverLocation
   } = useAppStore();
 
-  const { simulateTravel } = useDriverPosition(); // Active le GPS & permet la simu
+  const { simulateTravel } = useDriverPosition();
 
-  const todayStats = [
-    { label: "Courses", value: "0", icon: TrendingUp },
-    { label: "Heures", value: "0h", icon: Clock },
-    { label: "Gains", value: earnings.toFixed(2) + "€", icon: Euro },
-  ];
+  // --- KPI LOGIC (Temps Réel) ---
+  const stats = useMemo(() => {
+    const count = history.length;
+    // Estimation simple : 20 min par course
+    const totalMinutes = count * 20;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const timeDisplay = count > 0 ? `${hours}h${minutes > 0 ? minutes : ''}` : "0h";
+
+    return [
+      { label: "Courses", value: count.toString(), icon: TrendingUp },
+      { label: "Heures", value: timeDisplay, icon: Clock },
+      { label: "Gains", value: earnings.toFixed(2) + "€", icon: Euro },
+    ];
+  }, [history, earnings]);
 
   const handleAcceptOrder = (orderId: string) => acceptOrder(orderId);
   const handleRejectOrder = (orderId: string) => rejectOrder(orderId);
@@ -42,13 +53,11 @@ export const DriverHomeScreen = () => {
     }
   };
 
-  // Bouton Debug pour simuler le trajet
   const handleSimulateTrip = () => {
     if (!currentOrder) return;
     const target = currentOrder.status === 'accepted'
       ? currentOrder.pickupLocation
       : currentOrder.dropoffLocation;
-
     simulateTravel({ lat: target.lat, lng: target.lng });
   };
 
@@ -58,6 +67,7 @@ export const DriverHomeScreen = () => {
 
   return (
     <div className="min-h-screen pb-32">
+      {/* Header */}
       <header className="sticky top-0 z-30 glass border-b border-border/30">
         <div className="flex items-center justify-between p-4">
           <Button variant="ghost" size="icon">
@@ -72,6 +82,7 @@ export const DriverHomeScreen = () => {
       </header>
 
       <div className="p-4 space-y-6">
+        {/* Map Container */}
         <motion.div
           className="relative flex flex-col items-center justify-center rounded-3xl bg-secondary/30 border border-border/30 overflow-hidden min-h-[350px] shadow-inner"
           initial={{ opacity: 0, y: 20 }}
@@ -96,7 +107,7 @@ export const DriverHomeScreen = () => {
             <Button
               variant="destructive"
               size="sm"
-              className="absolute bottom-4 left-4 z-20 opacity-80 hover:opacity-100"
+              className="absolute bottom-4 left-4 z-20 opacity-80 hover:opacity-100 shadow-xl"
               onClick={handleSimulateTrip}
             >
               <PlayCircle className="mr-2 h-4 w-4" /> Demo: Avancer
@@ -104,14 +115,15 @@ export const DriverHomeScreen = () => {
           )}
         </motion.div>
 
+        {/* Stats Grid (Dynamic) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">Aujourd'hui</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">Performance (Session)</h2>
           <div className="grid grid-cols-3 gap-3">
-            {todayStats.map((stat) => (
+            {stats.map((stat) => (
               <Card key={stat.label} className="glass border-border/30">
                 <CardContent className="p-3 text-center">
                   <stat.icon className="h-4 w-4 mx-auto mb-1 text-accent" />
@@ -123,6 +135,7 @@ export const DriverHomeScreen = () => {
           </div>
         </motion.div>
 
+        {/* Settings Teaser */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -14,32 +14,32 @@ interface User {
 }
 
 interface AppState {
-  // Auth State
+  // Auth
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isSplashComplete: boolean;
 
   // Driver State
   driverStatus: DriverStatus;
   isOnDuty: boolean;
-  driverLocation: { lat: number; lng: number }; // NEW
+  driverLocation: { lat: number; lng: number };
 
-  // Driver Workflow State
+  // Data State (Financial & History)
   orders: Order[];
   currentOrder: Order | null;
+  history: Order[];
   earnings: number;
-
-  // UI State
-  isSplashComplete: boolean;
 
   // Actions
   setUser: (user: User | null) => void;
   setIsLoading: (loading: boolean) => void;
-  setDriverStatus: (status: DriverStatus) => void;
-  setIsOnDuty: (onDuty: boolean) => void;
-  setDriverLocation: (location: { lat: number; lng: number }) => void; // NEW
   setSplashComplete: (complete: boolean) => void;
+
   logout: () => void;
+  setDriverStatus: (status: DriverStatus) => void;
+  setIsOnDuty: (isOnDuty: boolean) => void; // RESTORED
+  setDriverLocation: (location: { lat: number; lng: number }) => void;
 
   // Workflow Actions
   acceptOrder: (orderId: string) => void;
@@ -48,7 +48,7 @@ interface AppState {
   rejectOrder: (orderId: string) => void;
 }
 
-// Mock Data
+// MOCK DATA
 const MOCK_ORDERS: Order[] = [
   {
     id: "1",
@@ -77,73 +77,85 @@ export const useAppStore = create<AppState>()(
       user: null,
       isAuthenticated: false,
       isLoading: true,
+      isSplashComplete: false,
+
       driverStatus: "offline",
       isOnDuty: false,
-      driverLocation: { lat: 48.8566, lng: 2.3522 }, // Default: Paris Châtelet
-      isSplashComplete: false,
+      driverLocation: { lat: 48.8566, lng: 2.3522 },
 
       orders: MOCK_ORDERS,
       currentOrder: null,
+      history: [],
       earnings: 0,
 
       // Actions
       setUser: (user) => set({ user, isAuthenticated: !!user }),
       setIsLoading: (isLoading) => set({ isLoading }),
-      setDriverStatus: (driverStatus) => set({ driverStatus }),
-      setIsOnDuty: (isOnDuty) => set({ isOnDuty, driverStatus: isOnDuty ? "online" : "offline" }),
-      setDriverLocation: (location) => set({ driverLocation: location }),
       setSplashComplete: (isSplashComplete) => set({ isSplashComplete }),
 
-      logout: () =>
-        set({
-          user: null,
-          isAuthenticated: false,
-          driverStatus: "offline",
-          isOnDuty: false,
-          orders: MOCK_ORDERS,
+      logout: () => set({
+        user: null,
+        isAuthenticated: false,
+        driverStatus: "offline",
+        isOnDuty: false,
+        history: [],
+        earnings: 0,
+        currentOrder: null,
+      }),
+
+      setDriverStatus: (status) => set({ driverStatus: status, isOnDuty: status === 'online' }),
+
+      // RESTORED FUNCTION
+      setIsOnDuty: (isOnDuty) => set({
+        isOnDuty,
+        driverStatus: isOnDuty ? "online" : "offline"
+      }),
+
+      setDriverLocation: (loc) => set({ driverLocation: loc }),
+
+      acceptOrder: (orderId) => set((state) => {
+        const order = state.orders.find(o => o.id === orderId);
+        if (!order) return state;
+        return {
+          currentOrder: { ...order, status: "accepted" },
+          orders: state.orders.filter(o => o.id !== orderId),
+          driverStatus: "busy"
+        };
+      }),
+
+      updateOrderStatus: (status) => set((state) => ({
+        currentOrder: state.currentOrder ? { ...state.currentOrder, status } : null
+      })),
+
+      completeOrder: () => set((state) => {
+        if (!state.currentOrder) return state;
+
+        const completedOrder: Order = {
+          ...state.currentOrder,
+          status: 'completed',
+          completedAt: new Date().toISOString()
+        };
+
+        return {
+          earnings: state.earnings + state.currentOrder.price,
+          history: [completedOrder, ...state.history],
           currentOrder: null,
-          earnings: 0,
-        }),
+          driverStatus: "online"
+        };
+      }),
 
-      // Workflow Actions
-      acceptOrder: (orderId) =>
-        set((state) => {
-          const order = state.orders.find((o) => o.id === orderId);
-          if (!order) return state;
-          return {
-            currentOrder: { ...order, status: "accepted" },
-            orders: state.orders.filter((o) => o.id !== orderId),
-            driverStatus: "busy",
-          };
-        }),
-
-      updateOrderStatus: (status) =>
-        set((state) => ({
-          currentOrder: state.currentOrder ? { ...state.currentOrder, status } : null,
-        })),
-
-      completeOrder: () =>
-        set((state) => {
-          if (!state.currentOrder) return state;
-          return {
-            earnings: state.earnings + state.currentOrder.price,
-            currentOrder: null,
-            driverStatus: "online",
-          };
-        }),
-
-      rejectOrder: (orderId) =>
-        set((state) => ({
-          orders: state.orders.filter((o) => o.id !== orderId),
-        })),
+      rejectOrder: (orderId) => set((state) => ({
+        orders: state.orders.filter(o => o.id !== orderId)
+      })),
     }),
     {
-      name: "one-connexion-store",
+      name: "one-connexion-store-v2",
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        currentOrder: state.currentOrder,
+        history: state.history,
         earnings: state.earnings,
+        currentOrder: state.currentOrder
       }),
     }
   )

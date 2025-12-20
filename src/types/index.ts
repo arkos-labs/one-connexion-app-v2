@@ -14,6 +14,8 @@ export interface Order {
   price: number;
   distance: string;
   status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+  assignedDriverId?: string;
+  completedAt?: string; // NEW: Timestamp de fin de course
 }
 
 export interface DriverProfile {
