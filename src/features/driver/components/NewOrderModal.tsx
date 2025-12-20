@@ -49,20 +49,14 @@ export const NewOrderModal = ({ order, onAccept, onReject }: NewOrderModalProps)
     <AnimatePresence>
       {order && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-background/80 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end justify-center pointer-events-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Urgent Pulse Background */}
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-b from-accent/10 to-transparent"
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
 
           <motion.div
-            className="relative w-full max-w-md mx-4 mb-4 overflow-hidden rounded-3xl border border-accent/30 bg-card shadow-2xl"
+            className="relative w-full max-w-md mx-4 mb-4 overflow-hidden rounded-3xl border border-accent/30 bg-card shadow-2xl pointer-events-auto"
             initial={{ y: "100%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}

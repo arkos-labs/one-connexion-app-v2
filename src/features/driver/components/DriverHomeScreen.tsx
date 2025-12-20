@@ -1,179 +1,150 @@
-import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Menu, Bell, TrendingUp, Clock, Euro, Settings, PlayCircle, PlusCircle, Car } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { DriverStatusToggle, DriverStatusBadge } from "./DriverStatusToggle";
-import { ActiveOrderCard } from "./ActiveOrderCard";
-import { DriverMap } from "./DriverMap";
-import { RideHistorySheet } from "./RideHistorySheet";
-import { DriverSettings } from "./DriverSettings";
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/stores/useAppStore";
-import { useDriverPosition } from "@/hooks/useDriverPosition";
-import { useDriverAlerts } from "@/hooks/useDriverAlerts";
-import { useSidebar } from "@/components/ui/sidebar";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { MapPin, Navigation, Menu, Bell, Shield, Wallet, Zap } from "lucide-react";
+import { DriverMap } from "./DriverMap";
+import { ActiveOrderCard } from "./ActiveOrderCard";
 import { RideSummary } from "./RideSummary";
-import { AnimatePresence } from "framer-motion";
-
+import { SlideToAction } from "./SlideToAction";
+import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "@/hooks/use-toast";
 import { ClientChat } from "./ClientChat";
 
 export const DriverHomeScreen = () => {
-  const { toggleSidebar } = useSidebar();
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isSettingsOpen, setSettingsOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-
   const {
-    orders,
     currentOrder,
-    history,
-    earnings,
+    driverStatus,
     acceptOrder,
-    rejectOrder,
     updateOrderStatus,
     completeOrder,
+    rejectOrder,
     triggerNewOrder,
-    isOnDuty,
-    driverLocation,
-    lastCompletedOrder
+    lastCompletedOrder,
+    clearSummary,
+    earnings,
+    driverLocation
   } = useAppStore();
 
-  const { simulateTravel } = useDriverPosition();
-  useDriverAlerts();
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
-  const stats = useMemo(() => {
-    const count = history.length;
-    const totalMinutes = count * 20;
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    const timeDisplay = count > 0 ? `${hours}h${minutes > 0 ? minutes : ''}` : "0h";
-
-    return [
-      { label: "Courses", value: count.toString(), icon: TrendingUp },
-      { label: "Heures", value: timeDisplay, icon: Clock },
-      { label: "Gains", value: earnings.toFixed(2) + "€", icon: Euro },
-    ];
-  }, [history, earnings]);
-
-
-  const handleOrderStatusChange = (orderId: string, status: 'in_progress' | 'completed') => {
-    if (status === 'completed') {
-      completeOrder();
-    } else {
-      updateOrderStatus(status);
-    }
-  };
-
-  const handleSimulateTrip = () => {
-    if (!currentOrder) return;
-    const target = currentOrder.status === 'accepted'
-      ? currentOrder.pickupLocation
-      : currentOrder.dropoffLocation;
-    simulateTravel({ lat: target.lat, lng: target.lng });
+  // Fonction démo pour simuler une commande
+  const handleSimulateOrder = () => {
+    setIsDemoLoading(true);
+    setTimeout(() => {
+      triggerNewOrder();
+      setIsDemoLoading(false);
+      toast({
+        title: "Nouvelle commande ! 🔔",
+        description: "Un client a besoin de vous à proximité.",
+      });
+    }, 2000);
   };
 
   return (
-    <div className="min-h-screen pb-32">
-      {/* Header removed from home screen as it is now global */}
+    // CONTENEUR PRINCIPAL : Flex Column pour séparer Carte et Info
+    <div className="flex flex-col h-full w-full bg-background relative overflow-hidden">
 
-      <div className="p-4 space-y-6">
-        {/* Map Container */}
-        <motion.div
-          className="relative flex flex-col items-center justify-center rounded-3xl bg-secondary/30 border border-border/30 overflow-hidden min-h-[350px] shadow-inner"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="absolute inset-0 z-0">
-            <DriverMap
-              activeOrder={currentOrder}
-              driverLocation={driverLocation}
-            />
-          </div>
+      {/* 1. ZONE CARTE (Prend tout l'espace restant) */}
+      <div className="flex-1 relative w-full min-h-0">
+        <DriverMap activeOrder={currentOrder} driverLocation={driverLocation} />
 
-          {/* Dev Tools Overlay */}
-          <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-2">
-            {currentOrder && (
-              <Button
-                variant="destructive"
-                size="sm"
-                className="opacity-90 hover:opacity-100 shadow-xl"
-                onClick={handleSimulateTrip}
-              >
-                <PlayCircle className="mr-2 h-4 w-4" /> Demo: Avancer
-              </Button>
-            )}
-
-            {isOnDuty && !currentOrder && (
-              <Button
-                variant="default"
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white shadow-xl"
-                onClick={triggerNewOrder}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" /> Test: New Order
-              </Button>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Stats Grid */}
-        {/* Stats Grid - Hidden during active order */}
-        {!currentOrder && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <div className="flex items-center justify-between mb-3 px-1">
-              <h2 className="text-sm font-medium text-muted-foreground">Performance (Session)</h2>
-              <button
-                onClick={() => setIsHistoryOpen(true)}
-                className="text-xs font-bold text-accent"
-              >
-                Voir l'historique
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              {stats.map((stat) => (
-                <Card
-                  key={stat.label}
-                  className="glass border-border/30 active:scale-95 transition-transform cursor-pointer hover:bg-secondary/20"
-                  onClick={() => setIsHistoryOpen(true)}
-                >
-                  <CardContent className="p-3 text-center">
-                    <stat.icon className="h-4 w-4 mx-auto mb-1 text-accent" />
-                    <p className="text-xl font-bold">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground">{stat.label}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
+        {/* Boutons flottants sur la carte (GPS, Recentrer...) */}
+        <div className="absolute right-4 bottom-4 flex flex-col gap-2 pointer-events-auto z-[400]">
+          <Button size="icon" className="rounded-full shadow-lg bg-white text-black hover:bg-zinc-100 h-10 w-10">
+            <Navigation className="h-4 w-4" />
+          </Button>
+          <Button size="icon" className="rounded-full shadow-lg bg-white text-black hover:bg-zinc-100 h-10 w-10">
+            <MapPin className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* NewOrderModal Removed from here */}
+      {/* 2. ZONE INFO (Fixe en bas, ne cache pas la carte) */}
+      <div className="shrink-0 z-20 w-full bg-background border-t shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.1)]">
+        <AnimatePresence mode="wait">
+          {currentOrder ? (
+            // CAS 1 : COURSE ACTIVE
+            <motion.div
+              key="active-order"
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="p-4 pb-0" // Reset padding as Card has its own
+            >
+              <ActiveOrderCard
+                order={currentOrder}
+                onStatusChange={updateOrderStatus}
+                onChatOpen={() => setIsChatOpen(true)}
+              />
+            </motion.div>
+          ) : (
+            // CAS 2 : EN ATTENTE / STATUS
+            <motion.div
+              key="status-panel"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="p-6 space-y-6"
+            >
+              {/* Statut Toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">Bonjour, Chauffeur</h2>
+                  <p className="text-muted-foreground text-sm">
+                    {driverStatus === 'online' ? 'Vous êtes visible' : 'Passez en ligne pour recevoir des courses'}
+                  </p>
+                </div>
+                {/* Indicateur visuel simple */}
+                <div className={`h-3 w-3 rounded-full ${driverStatus === 'online' ? 'bg-green-500 animate-pulse' : 'bg-zinc-300'}`} />
+              </div>
 
-      {currentOrder && (
-        <ActiveOrderCard
-          order={currentOrder}
-          onStatusChange={handleOrderStatusChange}
-          onChatOpen={() => setIsChatOpen(true)}
-        />
-      )}
+              {/* Stats Rapides */}
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="p-4 flex items-center gap-3 bg-secondary/20 border-none">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-lg">
+                    <Wallet className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Gains du jour</p>
+                    <p className="text-lg font-bold">{earnings.toFixed(2)} €</p>
+                  </div>
+                </Card>
+                <Card className="p-4 flex items-center gap-3 bg-secondary/20 border-none">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg">
+                    <Shield className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Taux d'accept.</p>
+                    <p className="text-lg font-bold">98%</p>
+                  </div>
+                </Card>
+              </div>
 
-      {/* Ride Summary Overlay */}
+              {/* Bouton Démo (À retirer en prod) */}
+              <Button
+                onClick={handleSimulateOrder}
+                disabled={isDemoLoading || driverStatus !== 'online'}
+                className="w-full h-12 text-base font-medium shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all"
+              >
+                {isDemoLoading ? "Recherche de client..." : driverStatus === 'online' ? "Simuler une commande (Démo)" : "Passez en ligne d'abord"}
+                {!isDemoLoading && driverStatus === 'online' && <Zap className="ml-2 h-4 w-4 fill-white" />}
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Résumé de fin de course (Reste en overlay car c'est une modale) */}
       <AnimatePresence>
         {lastCompletedOrder && (
-          <RideSummary order={lastCompletedOrder} />
+          <RideSummary
+            order={lastCompletedOrder}
+          />
         )}
       </AnimatePresence>
 
-      {/* Sheets & Dialogs */}
-      <RideHistorySheet isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
-      <DriverSettings open={isSettingsOpen} onOpenChange={setSettingsOpen} />
       <ClientChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
     </div>

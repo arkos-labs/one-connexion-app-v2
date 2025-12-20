@@ -41,26 +41,44 @@ export const HistoryPage = () => {
     return (
         <div className="p-6 max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500">
 
-            {/* En-tête avec Recherche */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Historique des courses</h1>
-                    <p className="text-muted-foreground">Retrouvez le détail de vos {history.length} courses passées.</p>
-                </div>
+            {/* Résumé Mensuel */}
+            <div className="grid gap-4 md:grid-cols-2">
+                <Card className="bg-primary text-primary-foreground border-none shadow-lg">
+                    <CardContent className="p-6 flex justify-between items-center">
+                        <div>
+                            <p className="text-primary-foreground/80 text-sm font-medium mb-1">Gains du mois (Net)</p>
+                            <h2 className="text-3xl font-bold tracking-tight">{history.reduce((acc, r) => acc + r.price, 0).toFixed(2)} €</h2>
+                        </div>
+                        <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center">
+                            <Euro className="h-6 w-6" />
+                        </div>
+                    </CardContent>
+                </Card>
 
-                <div className="flex gap-2 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Rechercher une course..."
-                            className="pl-9 bg-background"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <Button variant="outline" size="icon">
-                        <Filter className="h-4 w-4" />
-                    </Button>
+                <Card>
+                    <CardContent className="p-6 flex justify-between items-center">
+                        <div>
+                            <p className="text-muted-foreground text-sm font-medium mb-1">Prochain Virement</p>
+                            <h2 className="text-2xl font-bold tracking-tight">01 {new Date().toLocaleDateString('fr-FR', { month: 'long' })}</h2>
+                            <p className="text-xs text-green-600 font-medium">Cycle mensuel actif</p>
+                        </div>
+                        <div className="h-12 w-12 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center">
+                            <Calendar className="h-6 w-6" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Barre de Recherche */}
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Rechercher une course ..."
+                        className="pl-9 bg-background h-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
             </div>
 

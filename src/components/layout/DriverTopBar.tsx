@@ -20,7 +20,7 @@ export const DriverTopBar = () => {
     };
 
     return (
-        <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 backdrop-blur px-4 shadow-sm justify-between relative transition-all">
+        <header className="relative w-full z-50 shrink-0 flex h-16 items-center border-b bg-background/95 backdrop-blur px-4 shadow-sm justify-between transition-all">
             {/* 1. Zone Gauche : Menu + Retour Carte */}
             <div className="flex items-center gap-2 z-10 shrink-0">
                 <SidebarTrigger />

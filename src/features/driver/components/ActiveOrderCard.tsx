@@ -9,6 +9,7 @@ import { Order } from "@/types";
 import { useAppPreferences } from "@/hooks/useAppPreferences";
 import { useAppStore } from "@/stores/useAppStore";
 import { cn } from "@/lib/utils";
+import { ProofOfDeliveryModal } from "./ProofOfDeliveryModal";
 
 // Utilitaires de distance simple (Haversine simplifié)
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -37,6 +38,7 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
   const { driverLocation } = useAppStore();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [sliderConfirmed, setSliderConfirmed] = useState(false);
+  const [isProofModalOpen, setIsProofModalOpen] = useState(false); // New State
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +55,6 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
 
   const isNearby = distanceToTarget < 200; // 200 mètres
 
-  // Config according to status
   const statusConfig = isPickupPhace ? {
     title: "En route vers le retrait",
     color: "text-blue-500",
@@ -70,169 +71,158 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
     nextStatus: 'completed' as const
   };
 
+  const handleProofConfirmed = () => {
+    onStatusChange(order.id, 'completed');
+    setIsProofModalOpen(false);
+  };
+
   const handleSlideEnd = (info: any) => {
-    if (!isNearby) return; // Sécurité supplémentaire
+    if (!isNearby) return;
 
     const containerWidth = containerRef.current?.offsetWidth || 300;
     const threshold = containerWidth * 0.7;
 
     if (info.offset.x >= threshold) {
       setSliderConfirmed(true);
+
       setTimeout(() => {
-        onStatusChange(order.id, statusConfig.nextStatus);
+        // Intercept completion for Proof
+        if (statusConfig.nextStatus === 'completed') {
+          setIsProofModalOpen(true);
+        } else {
+          onStatusChange(order.id, statusConfig.nextStatus);
+        }
         setSliderConfirmed(false);
       }, 300);
     }
   };
 
   return (
-    <motion.div
-      initial={{ y: 100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 100, opacity: 0 }}
-      className="fixed bottom-0 left-0 right-0 z-50 p-4"
-    >
-      <Card className="border-t border-x border-border/50 shadow-2xl bg-card/95 backdrop-blur-xl rounded-t-3xl overflow-hidden transition-all duration-300">
+    <div className="w-full">
+      <Card className="border shadow-2xl bg-card/95 backdrop-blur-xl rounded-xl overflow-hidden">
 
-        {/* HEADER */}
+        {/* HEADER (Visible & Readable) */}
         <div
-          className={cn("px-6 py-4 flex justify-between items-center border-b border-border/50 cursor-pointer hover:bg-white/5 transition-colors", statusConfig.bgColor)}
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={cn("px-6 py-4 flex justify-between items-center border-b border-border/50 transition-colors", statusConfig.bgColor)}
         >
           <div className="flex items-center gap-3">
-            <div className={cn("h-3 w-3 rounded-full animate-pulse ring-2 ring-white/20", statusConfig.thumbColor)} />
+            <div className={cn("h-4 w-4 rounded-full animate-pulse ring-4 ring-white/20", statusConfig.thumbColor)} />
             <div>
-              <span className={cn("font-bold text-sm uppercase tracking-wide block leading-none", statusConfig.color)}>
+              <span className={cn("font-bold text-base uppercase tracking-wide block leading-none", statusConfig.color)}>
                 {statusConfig.title}
               </span>
-              {/* Affichage Distance */}
-              <span className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <Navigation className="h-3 w-3" />
+              <span className="text-sm text-muted-foreground mt-1 flex items-center gap-1 font-medium">
+                <Navigation className="h-4 w-4" />
                 {distanceToTarget > 1000
                   ? `${(distanceToTarget / 1000).toFixed(1)} km`
                   : `${Math.round(distanceToTarget)} m`}
               </span>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="bg-background/50 backdrop-blur border-border/50">
-              <Clock className="mr-1 h-3 w-3" /> 12 min
-            </Badge>
-            {isCollapsed ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-          </div>
+          <Badge variant="outline" className="bg-background/50 backdrop-blur border-border/50 h-8 text-sm px-3">
+            <Clock className="mr-1.5 h-4 w-4" /> 12 min
+          </Badge>
         </div>
 
-        {/* CORPS DE LA CARTE */}
-        <AnimatePresence>
-          {!isCollapsed && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
+        {/* CORPS COMPACT */}
+        <div className="overflow-hidden">
+          <CardContent className="p-4 space-y-3">
+
+            {/* LIGNE 1 : Client + Actions */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center border border-border shadow-sm">
+                  <User className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm leading-tight">{order.clientName}</h3>
+                  <p className="text-[10px] text-muted-foreground">Premium ⭐ 4.9</p>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs gap-1.5 rounded-full border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                onClick={onChatOpen}
+              >
+                <Headset className="h-3.5 w-3.5" />
+                Régulation
+              </Button>
+            </div>
+
+            {/* LIGNE 2 : Adresse Cible uniquement */}
+            <div className="bg-secondary/30 rounded-lg p-2.5 flex items-center justify-between gap-3 border border-border/50">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  {isPickupPhace ? "Lieu de prise en charge" : "Destination"}
+                </p>
+                <div className="flex items-start gap-1.5">
+                  <MapPin className={cn("h-4 w-4 mt-0.5 shrink-0", isPickupPhace ? "text-blue-500" : "text-green-500")} />
+                  <p className="font-medium text-sm leading-tight truncate">
+                    {targetLocation.address}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                size="icon"
+                className="h-9 w-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shrink-0"
+                onClick={() => openGPS(targetLocation.lat, targetLocation.lng)}
+              >
+                <Navigation className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+
+          {/* FOOTER : Slider Large & Visible */}
+          <CardFooter className="p-6 pt-0">
+            <div
+              ref={containerRef}
+              className={cn(
+                "relative h-16 w-full rounded-full overflow-hidden p-1.5 select-none touch-none border shadow-inner transition-colors",
+                isNearby
+                  ? "bg-secondary/60 border-white/10"
+                  : "bg-muted/40 border-dashed border-white/10 cursor-not-allowed"
+              )}
             >
-              <CardContent className="p-6 space-y-6">
-                {/* Client Info & Actions (inchangé) */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center border-2 border-border shadow-sm">
-                      <User className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg leading-none">{order.clientName}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">Client Premium ⭐ 4.9</p>
-                    </div>
-                  </div>
+              <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+                <span className={cn(
+                  "text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-2",
+                  isNearby ? "text-muted-foreground/80 animate-pulse" : "text-muted-foreground/50"
+                )}>
+                  {isNearby ? statusConfig.nextAction : "Rapprochez-vous"}
+                  {!isNearby && <Lock className="h-4 w-4" />}
+                </span>
+              </div>
 
-                  <div className="flex gap-2">
-                    <div className="relative">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-9 gap-2 rounded-full border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 shadow-sm transition-colors"
-                        onClick={onChatOpen}
-                      >
-                        <Headset className="h-4 w-4" />
-                        <span className="font-semibold text-xs uppercase tracking-wide">Régulation</span>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator className="bg-border/50" />
-
-                {/* Destination */}
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {isPickupPhace ? "Lieu de prise en charge" : "Destination"}
-                    </p>
-                    <div className="flex items-start gap-2">
-                      <MapPin className={cn("h-5 w-5 mt-0.5 shrink-0", isPickupPhace ? "text-blue-500" : "text-green-500")} />
-                      <p className="font-medium text-base leading-snug">
-                        {targetLocation.address}
-                      </p>
-                    </div>
-                  </div>
-
-                  <Button
-                    size="lg"
-                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/20 shadow-lg rounded-2xl h-14 w-14 p-0 shrink-0"
-                    onClick={() => openGPS(targetLocation.lat, targetLocation.lng)}
-                  >
-                    <Navigation className="h-6 w-6" />
-                  </Button>
-                </div>
-              </CardContent>
-
-              {/* FOOTER : Slider Intelligent */}
-              <CardFooter className="p-6 pt-0">
-                <div
-                  ref={containerRef}
-                  className={cn(
-                    "relative h-16 w-full rounded-full overflow-hidden p-1.5 select-none touch-none border shadow-inner transition-colors",
-                    isNearby
-                      ? "bg-secondary/40 border-white/5"
-                      : "bg-muted/30 border-dashed border-white/10 cursor-not-allowed"
-                  )}
-                >
-                  {/* Texte de fond */}
-                  <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
-                    <span className={cn(
-                      "text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-2",
-                      isNearby ? "text-muted-foreground/60 animate-pulse" : "text-muted-foreground/40"
-                    )}>
-                      {isNearby ? "Glisser pour valider" : "Rapprochez-vous"}
-                      {!isNearby && <Lock className="h-3 w-3" />}
-                    </span>
-                  </div>
-
-                  {/* Thumb draggable ou locké */}
-                  <motion.div
-                    drag={isNearby ? "x" : false} // Désactivé si trop loin
-                    dragConstraints={containerRef}
-                    dragElastic={0.05}
-                    dragMomentum={false}
-                    dragSnapToOrigin={!sliderConfirmed}
-                    onDragEnd={(e, info) => handleSlideEnd(info)}
-                    className={cn(
-                      "h-full aspect-square rounded-full shadow-2xl flex items-center justify-center z-10 relative border-2 transition-all",
-                      isNearby
-                        ? cn(statusConfig.thumbColor, "cursor-grab active:cursor-grabbing border-white/20 text-white")
-                        : "bg-muted border-white/10 text-muted-foreground"
-                    )}
-                    animate={sliderConfirmed ? { x: "100%" } : { x: 0 }}
-                  >
-                    {isNearby ? <CheckCircle className="h-6 w-6" /> : <Navigation className="h-5 w-5 opacity-50" />}
-                  </motion.div>
-                </div>
-              </CardFooter>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <motion.div
+                drag={isNearby ? "x" : false}
+                dragConstraints={containerRef}
+                dragElastic={0.05}
+                dragMomentum={false}
+                dragSnapToOrigin={!sliderConfirmed}
+                onDragEnd={(e, info) => handleSlideEnd(info)}
+                className={cn(
+                  "h-full aspect-square rounded-full shadow-lg flex items-center justify-center z-10 relative border-2 transition-all",
+                  isNearby
+                    ? cn(statusConfig.thumbColor, "cursor-grab active:cursor-grabbing border-white/20 text-white")
+                    : "bg-muted border-white/10 text-muted-foreground"
+                )}
+                animate={sliderConfirmed ? { x: "100%" } : { x: 0 }}
+              >
+                {isNearby ? <CheckCircle className="h-7 w-7" /> : <Navigation className="h-6 w-6 opacity-50" />}
+              </motion.div>
+            </div>
+          </CardFooter>
+        </div>
       </Card>
-    </motion.div>
+
+      <ProofOfDeliveryModal
+        isOpen={isProofModalOpen}
+        onClose={() => setIsProofModalOpen(false)}
+        onConfirm={handleProofConfirmed}
+      />
+    </div>
   );
 };

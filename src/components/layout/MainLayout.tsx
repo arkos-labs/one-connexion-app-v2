@@ -31,10 +31,10 @@ export function MainLayout({ children }: { children?: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-background overflow-hidden">
+      <div className="flex h-[100dvh] w-full bg-background overflow-hidden relative">
         <AppSidebar />
 
-        <main className="flex-1 w-full relative flex flex-col overflow-hidden">
+        <main className="flex-1 w-full relative flex flex-col h-full overflow-hidden">
 
           {/* 3. La Barre Supérieure Globale (Statut + Nav) */}
           <DriverTopBar />
