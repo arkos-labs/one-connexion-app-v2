@@ -6,7 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 const NOTIFICATION_SOUND = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export const useDriverAlerts = () => {
-    const { orders, earnings, isOnDuty } = useAppStore();
+    const orders = useAppStore((state) => state.orders);
+    const earnings = useAppStore((state) => state.getEarnings());
+    const isOnDuty = useAppStore((state) => state.isOnDuty);
     const { toast } = useToast();
 
     // Refs pour comparer l'état précédent (Pattern "Previous Value")

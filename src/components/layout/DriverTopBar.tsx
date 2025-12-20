@@ -7,16 +7,28 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 export const DriverTopBar = () => {
-    const { driverStatus, setIsOnDuty, currentOrder } = useAppStore();
+    const driverStatus = useAppStore((state) => state.driverStatus);
+    const currentOrder = useAppStore((state) => state.currentOrder);
+    const setIsOnDuty = useAppStore((state) => state.setIsOnDuty);
     const location = useLocation();
 
-    const isOnline = driverStatus === 'online';
+    const isOnline = driverStatus === 'online' || driverStatus === 'busy';
     const isMapPage = location.pathname === '/driver' || location.pathname === '/driver/map';
 
     // Vérifie si une course est vraiment active (acceptée ou en cours)
     const hasActiveRide = currentOrder && (currentOrder.status === 'accepted' || currentOrder.status === 'in_progress');
 
     const handleStatusToggle = (checked: boolean) => {
+        // Empêcher le toggle si une course est en cours
+        if (currentOrder) {
+            toast({
+                title: "Course en cours",
+                description: "Veuillez terminer votre course avant de changer votre statut.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         const success = setIsOnDuty(checked);
         if (!success) {
             toast({
@@ -26,6 +38,11 @@ export const DriverTopBar = () => {
             });
         }
     };
+
+    // Déterminer le texte et la couleur du statut
+    const statusText = currentOrder ? 'En Course' : (isOnline ? 'En ligne' : 'Hors ligne');
+    const statusColor = currentOrder ? 'text-orange-600' : (isOnline ? 'text-green-600' : 'text-muted-foreground');
+    const switchBgColor = currentOrder ? 'data-[state=checked]:bg-orange-600' : 'data-[state=checked]:bg-green-600';
 
     return (
         <header className="relative w-full z-50 shrink-0 flex h-16 items-center border-b bg-background/95 backdrop-blur px-4 shadow-sm justify-between transition-all">
@@ -64,14 +81,15 @@ export const DriverTopBar = () => {
 
             {/* 2. Statut Global (CENTRÉ ABSOLUMENT) */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 bg-secondary/30 p-1.5 rounded-full border border-border/50 shadow-sm z-0">
-                <span className={`text-xs font-bold uppercase tracking-wider px-2 whitespace-nowrap ${isOnline ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    {isOnline ? 'En ligne' : 'Hors ligne'}
+                <span className={`text-xs font-bold uppercase tracking-wider px-2 whitespace-nowrap ${statusColor}`}>
+                    {statusText}
                 </span>
                 <div className="flex items-center gap-2">
                     <Switch
                         checked={isOnline}
                         onCheckedChange={handleStatusToggle}
-                        className="data-[state=checked]:bg-green-600"
+                        disabled={!!currentOrder}
+                        className={switchBgColor}
                     />
                 </div>
             </div>

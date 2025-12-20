@@ -1,286 +1,139 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { Order } from "../types";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { createAuthSlice } from "./slices/authSlice";
+import { createDriverSlice } from "./slices/driverSlice";
+import { createOrderSlice } from "./slices/orderSlice";
+import { AppStore } from "./types";
 
-export type UserRole = "driver" | "dispatcher" | "admin";
-export type DriverStatus = "online" | "busy" | "offline";
-
-interface User {
-  id: string;
-  email: string;
-  fullName: string;
-  role: UserRole;
-  avatarUrl?: string;
-}
-
-export interface DriverDocument {
-  id: string;
-  name: string;
-  status: 'verified' | 'pending' | 'expired' | 'missing';
-  expiryDate?: string;
-}
-
-export interface DriverPreferences {
-  vehicleType: "car" | "bike" | "scooter";
-  navigationApp: "waze" | "google_maps" | "apple_maps";
-  soundEnabled: boolean;
-  darkMode: boolean;
-  autoAccept: boolean;
-}
-
-interface AppState {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  isSplashComplete: boolean;
-
-  driverStatus: DriverStatus;
-  isOnDuty: boolean;
-  driverLocation: { lat: number; lng: number };
-
-  orders: Order[];
-  currentOrder: Order | null;
-  history: Order[];
-  earnings: number;
-  lastCompletedOrder: Order | null;
-
-  vehicle: { model: string; plate: string; color: string } | null;
-  documents: DriverDocument[];
-  preferences: DriverPreferences;
-  messages: any[];
-
-  // Actions
-  setUser: (user: User | null) => void;
-  setIsLoading: (loading: boolean) => void;
-  setSplashComplete: (complete: boolean) => void;
-
-  logout: () => boolean;
-  setDriverStatus: (status: DriverStatus) => void;
-  setIsOnDuty: (isOnDuty: boolean) => boolean;
-  setDriverLocation: (location: { lat: number; lng: number }) => void;
-
-  acceptOrder: (orderId: string) => void;
-  updateOrderStatus: (status: Order['status']) => void;
-  completeOrder: () => void;
-  rejectOrder: (orderId: string) => void;
-  triggerNewOrder: () => void;
-  clearSummary: () => void;
-
-  updatePreferences: (prefs: Partial<DriverPreferences>) => void;
-  updatePreference: (key: keyof DriverPreferences, value: any) => void;
-  updateDocumentStatus: (docId: string, status: DriverDocument['status']) => void;
-
-  // Chat Actions
-  addMessage: (text: string, sender: 'driver' | 'dispatch') => void;
-  clearMessages: () => void;
-}
-
-// MOCK DATA
-const MOCK_ORDERS: Order[] = [
-  {
-    id: "1",
-    clientName: "Alice Dupont",
-    pickupLocation: { lat: 48.8566, lng: 2.3522, address: "10 Rue de Rivoli, Paris" },
-    dropoffLocation: { lat: 48.8606, lng: 2.3376, address: "Musée du Louvre, Paris" },
-    price: 15.50,
-    distance: "2.5 km",
-    status: "pending"
-  },
-  {
-    id: "2",
-    clientName: "Jean Martin",
-    pickupLocation: { lat: 48.8584, lng: 2.2945, address: "Tour Eiffel, Paris" },
-    dropoffLocation: { lat: 48.8738, lng: 2.2950, address: "Arc de Triomphe, Paris" },
-    price: 22.00,
-    distance: "3.2 km",
-    status: "pending"
-  }
-];
-
-export const useAppStore = create<AppState>()(
+/**
+ * Main Application Store - Sliced Architecture
+ * 
+ * ARCHITECTURE:
+ * - AuthSlice: User authentication & session
+ * - DriverSlice: Driver status, location, profile, preferences
+ * - OrderSlice: Orders management & earnings
+ * 
+ * PERSISTENCE STRATEGY (SECURITY CRITICAL):
+ * ✅ PERSISTED:
+ *    - user, isAuthenticated (AuthSlice)
+ *    - preferences, vehicle, documents (DriverSlice)
+ * 
+ * ❌ NOT PERSISTED (Security & Data Integrity):
+ *    - driverLocation (real-time data, stale after restart)
+ *    - driverStatus, isOnDuty (prevents ghost "online" status)
+ *    - currentOrder, orders (prevents ghost active orders)
+ *    - messages (chat is session-based)
+ * 
+ * PRICE HANDLING:
+ * - All prices stored in cents (integers) to avoid floating-point errors
+ * - Decimal.js used for all calculations
+ * - Example: €15.50 stored as 1550 cents
+ */
+export const useAppStore = create<AppStore>()(
   persist(
-    (set, get) => ({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-      isSplashComplete: false,
-
-      driverStatus: "offline",
-      isOnDuty: false,
-      driverLocation: { lat: 48.8566, lng: 2.3522 },
-
-      orders: [],
-      currentOrder: null,
-      history: [],
-      earnings: 0,
-      lastCompletedOrder: null,
-
-      vehicle: { model: "Toyota Prius", plate: "AB-123-CD", color: "Gris Minéral" },
-      documents: [
-        { id: "1", name: "Permis de conduire", status: "verified", expiryDate: "2025-01-01" },
-        { id: "2", name: "Carte VTC", status: "verified", expiryDate: "2024-12-15" },
-        { id: "3", name: "Assurance RC Pro", status: "expired", expiryDate: "2023-11-20" },
-        { id: "5", name: "Assurance Véhicule", status: "missing" },
-        { id: "4", name: "Kbis", status: "pending" },
-      ],
-      messages: [],
-
-      preferences: {
-        vehicleType: "car",
-        navigationApp: "google_maps",
-        soundEnabled: true,
-        darkMode: false,
-        autoAccept: false,
-      },
-
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
-      setIsLoading: (isLoading) => set({ isLoading }),
-      setSplashComplete: (isSplashComplete) => set({ isSplashComplete }),
-
-      logout: () => {
-        const state = get();
-        // Empêcher la déconnexion si une course est en cours
-        if (state.currentOrder) {
-          return false;
-        }
-        set({
-          user: null,
-          isAuthenticated: false,
-          driverStatus: "offline",
-          isOnDuty: false,
-          history: [],
-          earnings: 0,
-          currentOrder: null,
-          messages: []
-        });
-        return true;
-      },
-
-      setDriverStatus: (status) => set({ driverStatus: status, isOnDuty: status === 'online' }),
-      setIsOnDuty: (isOnDuty) => {
-        const state = get();
-        // Empêcher de se mettre hors ligne si une course est en cours
-        if (!isOnDuty && state.currentOrder) {
-          return false;
-        }
-        set({
-          isOnDuty,
-          driverStatus: isOnDuty ? "online" : "offline"
-        });
-        return true;
-      },
-      setDriverLocation: (loc) => set({ driverLocation: loc }),
-
-      acceptOrder: (orderId) => set((state) => {
-        const order = state.orders.find(o => o.id === orderId);
-        if (!order) return state;
-        return {
-          currentOrder: { ...order, status: "accepted" },
-          orders: state.orders.filter(o => o.id !== orderId)
-        };
-      }),
-
-      updateOrderStatus: (status) => set((state) => ({
-        currentOrder: state.currentOrder ? { ...state.currentOrder, status } : null
-      })),
-
-      completeOrder: () => set((state) => {
-        if (!state.currentOrder) return state;
-
-        const completedOrder: Order = {
-          ...state.currentOrder,
-          status: 'completed',
-          completedAt: new Date().toISOString()
-        };
-
-        return {
-          earnings: state.earnings + state.currentOrder.price,
-          history: [completedOrder, ...state.history],
-          currentOrder: null,
-          driverStatus: "online",
-          lastCompletedOrder: completedOrder
-        };
-      }),
-
-      clearSummary: () => set({ lastCompletedOrder: null }),
-
-      rejectOrder: (orderId) => set((state) => ({
-        orders: state.orders.filter(o => o.id !== orderId)
-      })),
-
-      triggerNewOrder: () => set((state) => {
-        const id = Math.random().toString(36).substr(2, 9);
-        const lat = 48.8566 + (Math.random() - 0.5) * 0.05;
-        const lng = 2.3522 + (Math.random() - 0.5) * 0.05;
-
-        const newOrder: Order = {
-          id,
-          clientName: `Client #${Math.floor(Math.random() * 1000)}`,
-          pickupLocation: { lat, lng, address: "Nouvelle Adresse, Paris" },
-          dropoffLocation: { lat: lat + 0.01, lng: lng + 0.01, address: "Destination, Paris" },
-          price: Math.floor(Math.random() * 30) + 10,
-          distance: "3.5 km",
-          status: "pending"
-        };
-
-        return { orders: [...state.orders, newOrder] };
-      }),
-
-      updatePreferences: (prefs) => set((state) => ({
-        preferences: { ...state.preferences, ...prefs }
-      })),
-
-      updatePreference: (key, value) => set((state) => ({
-        preferences: { ...state.preferences, [key]: value }
-      })),
-
-      updateDocumentStatus: (docId, status) => set((state) => ({
-        documents: state.documents.map(d => d.id === docId ? { ...d, status } : d)
-      })),
-
-      addMessage: (text, sender) => {
-        const newMessage = {
-          id: Math.random().toString(36).substr(2, 9),
-          sender,
-          text,
-          timestamp: new Date().toISOString()
-        };
-
-        set((state) => ({ messages: [...state.messages, newMessage] }));
-
-        if (sender === 'driver') {
-          setTimeout(() => {
-            const responses = [
-              "Bien reçu 10-4. On note l'information.",
-              "C'est noté. Restez en attente.",
-              "Nous contactons le client pour vous.",
-              "Merci pour le signalement. Continuez la mission.",
-              "Pouvez-vous confirmer votre position ?",
-              "Information transmise au superviseur."
-            ];
-            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-            get().addMessage(randomResponse, 'dispatch');
-          }, 4000);
-        }
-      },
-
-      clearMessages: () => set({ messages: [] }),
+    (...args) => ({
+      ...createAuthSlice(...args),
+      ...createDriverSlice(...args),
+      ...createOrderSlice(...args),
     }),
     {
-      name: "one-connexion-store-v3",
+      name: "one-connexion-store-v4", // Incremented version for clean migration
+      storage: createJSONStorage(() => localStorage),
+
+      /**
+       * Partialize - Define what gets persisted
+       * CRITICAL: Only persist safe, non-volatile data
+       */
       partialize: (state) => ({
+        // ===== AUTH SLICE (Persisted) =====
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        history: state.history,
-        earnings: state.earnings,
+        // Note: isLoading and isSplashComplete are NOT persisted (runtime state)
+
+        // ===== DRIVER SLICE (Partially Persisted) =====
         preferences: state.preferences,
-        documents: state.documents,
         vehicle: state.vehicle,
-        currentOrder: state.currentOrder,
-        driverStatus: state.driverStatus,
-        isOnDuty: state.isOnDuty,
-        messages: state.messages
+        documents: state.documents,
+        // Note: driverStatus, isOnDuty, driverLocation, messages NOT persisted
+
+        // ===== ORDER SLICE (Partially Persisted) =====
+        history: state.history,
+        earningsInCents: state.earningsInCents,
+        // Note: orders, currentOrder, lastCompletedOrder NOT persisted
       }),
+
+      /**
+       * Version for migration handling
+       * Increment this when making breaking changes to the store structure
+       */
+      version: 4,
+
+      /**
+       * Migration function for handling version upgrades
+       */
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as Partial<AppStore>;
+
+        // Migration from v3 to v4: Convert earnings from float to cents
+        if (version < 4) {
+          const oldEarnings = (state as { earnings?: number }).earnings ?? 0;
+          state.earningsInCents = Math.round(oldEarnings * 100);
+
+          // Clean up old persisted fields that should not be persisted
+          delete (state as { currentOrder?: unknown }).currentOrder;
+          delete (state as { driverStatus?: unknown }).driverStatus;
+          delete (state as { isOnDuty?: unknown }).isOnDuty;
+          delete (state as { messages?: unknown }).messages;
+          delete (state as { driverLocation?: unknown }).driverLocation;
+          delete (state as { orders?: unknown }).orders;
+          delete (state as { earnings?: unknown }).earnings;
+        }
+
+        return state as AppStore;
+      },
     }
   )
 );
+
+/**
+ * Selector hooks for optimized re-renders
+ * Use these instead of accessing the full store when you only need specific slices
+ */
+
+// Auth selectors
+export const useAuth = () => useAppStore((state) => ({
+  user: state.user,
+  isAuthenticated: state.isAuthenticated,
+  isLoading: state.isLoading,
+  setUser: state.setUser,
+  logout: state.logout,
+}));
+
+// Driver selectors
+export const useDriver = () => useAppStore((state) => ({
+  driverStatus: state.driverStatus,
+  isOnDuty: state.isOnDuty,
+  driverLocation: state.driverLocation,
+  vehicle: state.vehicle,
+  preferences: state.preferences,
+  setDriverStatus: state.setDriverStatus,
+  setIsOnDuty: state.setIsOnDuty,
+  setDriverLocation: state.setDriverLocation,
+  updatePreferences: state.updatePreferences,
+}));
+
+// Order selectors
+export const useOrders = () => useAppStore((state) => ({
+  orders: state.orders,
+  currentOrder: state.currentOrder,
+  history: state.history,
+  earnings: state.getEarnings(),
+  acceptOrder: state.acceptOrder,
+  updateOrderStatus: state.updateOrderStatus,
+  completeOrder: state.completeOrder,
+  rejectOrder: state.rejectOrder,
+}));
+
+// Export types for convenience
+export type { AppStore } from "./types";
+export * from "./types";

@@ -16,20 +16,19 @@ import { useIncomingOrderAlert } from "@/hooks/useIncomingOrderAlert";
 import { useDriverPosition } from "@/hooks/useDriverPosition";
 
 export const DriverHomeScreen = () => {
-  const {
-    currentOrder,
-    orders,
-    driverStatus,
-    acceptOrder,
-    updateOrderStatus,
-    completeOrder,
-    rejectOrder,
-    triggerNewOrder,
-    lastCompletedOrder,
-    clearSummary,
-    earnings,
-    driverLocation
-  } = useAppStore();
+  const currentOrder = useAppStore((state) => state.currentOrder);
+  const orders = useAppStore((state) => state.orders);
+  const driverStatus = useAppStore((state) => state.driverStatus);
+  const driverLocation = useAppStore((state) => state.driverLocation);
+  const lastCompletedOrder = useAppStore((state) => state.lastCompletedOrder);
+  const earnings = useAppStore((state) => state.getEarnings());
+
+  const acceptOrder = useAppStore((state) => state.acceptOrder);
+  const updateOrderStatus = useAppStore((state) => state.updateOrderStatus);
+  const completeOrder = useAppStore((state) => state.completeOrder);
+  const rejectOrder = useAppStore((state) => state.rejectOrder);
+  const triggerNewOrder = useAppStore((state) => state.triggerNewOrder);
+  const clearSummary = useAppStore((state) => state.clearSummary);
 
   const { simulateTravel } = useDriverPosition();
 
