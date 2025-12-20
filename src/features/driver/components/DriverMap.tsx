@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -49,28 +49,37 @@ interface DriverMapProps {
     className?: string;
 }
 
-// --- Smart Focus Logic ---
+// --- Smart Focus Logic (Optimized) ---
 const MapUpdater = ({ activeOrder, driverLocation }: { activeOrder: Order | null; driverLocation: { lat: number; lng: number } }) => {
     const map = useMap();
+    const hasZoomedRef = useRef<string>("");
 
     useEffect(() => {
+        // Clé unique pour l'état actuel (ID commande + Statut)
+        const currentKey = activeOrder ? `${activeOrder.id}-${activeOrder.status}` : "idle";
+
+        // Anti-rebond : On ne re-zoom pas si on est déjà calé sur cet état (sauf si c'est le premier render)
+        // Cela permet au driver de bouger la carte sans que ça "saute" tout le temps
+        if (hasZoomedRef.current === currentKey) return;
+
         if (!activeOrder) {
             map.setView([driverLocation.lat, driverLocation.lng], 15, { animate: true });
-            return;
+        } else {
+            const points: L.LatLngTuple[] = [[driverLocation.lat, driverLocation.lng]];
+
+            if (activeOrder.status === 'accepted') {
+                points.push([activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng]);
+            } else if (activeOrder.status === 'in_progress') {
+                points.push([activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]);
+            }
+
+            const bounds = L.latLngBounds(points);
+            map.fitBounds(bounds, { padding: [80, 80], maxZoom: 16, animate: true });
         }
 
-        const points: L.LatLngTuple[] = [[driverLocation.lat, driverLocation.lng]];
+        hasZoomedRef.current = currentKey;
 
-        if (activeOrder.status === 'accepted') {
-            points.push([activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng]);
-        } else if (activeOrder.status === 'in_progress') {
-            points.push([activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]);
-        }
-
-        const bounds = L.latLngBounds(points);
-        map.fitBounds(bounds, { padding: [80, 80], maxZoom: 16, animate: true });
-
-    }, [activeOrder, activeOrder?.status, driverLocation, map]);
+    }, [activeOrder?.id, activeOrder?.status, map]); // RETRAIT DE driverLocation des dépendances !
 
     return null;
 };

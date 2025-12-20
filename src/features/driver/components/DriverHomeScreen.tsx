@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Menu, Bell, TrendingUp, Clock, Euro, Settings } from "lucide-react";
+import { Menu, Bell, TrendingUp, Clock, Euro, Settings, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DriverStatusToggle, DriverStatusBadge } from "./DriverStatusToggle";
@@ -8,6 +8,7 @@ import { NewOrderModal } from "./NewOrderModal";
 import { ActiveOrderCard } from "./ActiveOrderCard";
 import { DriverMap } from "./DriverMap";
 import { useAppStore } from "@/stores/useAppStore";
+import { useDriverPosition } from "@/hooks/useDriverPosition"; // NEW HOOK
 
 export const DriverHomeScreen = () => {
   const {
@@ -21,6 +22,8 @@ export const DriverHomeScreen = () => {
     isOnDuty,
     driverLocation
   } = useAppStore();
+
+  const { simulateTravel } = useDriverPosition(); // Active le GPS & permet la simu
 
   const todayStats = [
     { label: "Courses", value: "0", icon: TrendingUp },
@@ -37,6 +40,16 @@ export const DriverHomeScreen = () => {
     } else {
       updateOrderStatus(status);
     }
+  };
+
+  // Bouton Debug pour simuler le trajet
+  const handleSimulateTrip = () => {
+    if (!currentOrder) return;
+    const target = currentOrder.status === 'accepted'
+      ? currentOrder.pickupLocation
+      : currentOrder.dropoffLocation;
+
+    simulateTravel({ lat: target.lat, lng: target.lng });
   };
 
   const pendingOrder = isOnDuty && !currentOrder
@@ -77,6 +90,18 @@ export const DriverHomeScreen = () => {
               {isOnDuty ? "Vous êtes en ligne" : "Appuyez pour commencer"}
             </p>
           </div>
+
+          {/* Dev Tools Overlay */}
+          {currentOrder && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="absolute bottom-4 left-4 z-20 opacity-80 hover:opacity-100"
+              onClick={handleSimulateTrip}
+            >
+              <PlayCircle className="mr-2 h-4 w-4" /> Demo: Avancer
+            </Button>
+          )}
         </motion.div>
 
         <motion.div
