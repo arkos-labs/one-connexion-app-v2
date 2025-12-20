@@ -1,68 +1,54 @@
 import { motion } from "framer-motion";
 import { Power } from "lucide-react";
 import { useAppStore } from "@/stores/useAppStore";
+import { cn } from "@/lib/utils";
 
 export const DriverStatusToggle = () => {
-  const { isOnDuty, driverStatus, setIsOnDuty } = useAppStore();
+    const { isOnDuty, setDriverStatus } = useAppStore();
 
-  const handleToggle = () => {
-    setIsOnDuty(!isOnDuty);
-  };
+    const toggle = () => setDriverStatus(isOnDuty ? "offline" : "online");
 
-  return (
-    <motion.button
-      onClick={handleToggle}
-      className={`relative flex h-20 w-20 items-center justify-center rounded-full transition-colors ${
-        isOnDuty
-          ? "bg-accent shadow-glow"
-          : "bg-secondary border border-border/50"
-      }`}
-      whileTap={{ scale: 0.95 }}
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", damping: 15 }}
-    >
-      {/* Pulse ring when online */}
-      {isOnDuty && (
-        <motion.div
-          className="absolute inset-0 rounded-full bg-accent/30"
-          initial={{ scale: 1, opacity: 0.5 }}
-          animate={{ scale: 1.5, opacity: 0 }}
-          transition={{ duration: 2, repeat: Infinity }}
-        />
-      )}
+    return (
+        <div
+            onClick={toggle}
+            className={cn(
+                "relative flex h-12 w-48 cursor-pointer items-center rounded-full border-2 p-1 transition-colors duration-500 shadow-xl",
+                isOnDuty
+                    ? "bg-green-600 border-green-500 shadow-green-900/20"
+                    : "bg-slate-950 border-slate-800"
+            )}
+        >
+            {/* Texte Arrière-plan (Centré) */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span
+                    className={cn(
+                        "font-black text-xs uppercase tracking-[0.2em] transition-all duration-500 transform",
+                        isOnDuty ? "text-white translate-x-[-12px]" : "text-slate-500 translate-x-[12px]"
+                    )}
+                >
+                    {isOnDuty ? "En Ligne" : "Hors Ligne"}
+                </span>
+            </div>
 
-      <Power
-        className={`h-8 w-8 ${
-          isOnDuty ? "text-accent-foreground" : "text-muted-foreground"
-        }`}
-      />
-    </motion.button>
-  );
+            {/* Le Curseur Glissant (Thumb) */}
+            <motion.div
+                className="z-10 h-full aspect-square rounded-full bg-white shadow-lg flex items-center justify-center"
+                layout
+                transition={{ type: "spring", stiffness: 700, damping: 30 }}
+                // L'astuce Flexbox : justify-start (gauche) ou justify-end (droite) géré par le parent
+                style={{
+                    marginLeft: isOnDuty ? "auto" : "0",
+                    marginRight: isOnDuty ? "0" : "auto"
+                }}
+            >
+                <Power className={cn(
+                    "h-4 w-4 transition-colors duration-300",
+                    isOnDuty ? "text-green-600" : "text-slate-400"
+                )} />
+            </motion.div>
+        </div>
+    );
 };
 
-export const DriverStatusBadge = () => {
-  const { isOnDuty, driverStatus } = useAppStore();
-
-  const statusConfig = {
-    online: { label: "En ligne", color: "bg-accent", textColor: "text-accent" },
-    busy: { label: "En course", color: "bg-warning", textColor: "text-warning" },
-    offline: { label: "Hors ligne", color: "bg-muted-foreground/50", textColor: "text-muted-foreground" },
-  };
-
-  const config = statusConfig[driverStatus];
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="relative">
-        <div className={`h-2.5 w-2.5 rounded-full ${config.color}`} />
-        {isOnDuty && (
-          <div className={`absolute inset-0 rounded-full ${config.color} animate-ping`} />
-        )}
-      </div>
-      <span className={`text-sm font-medium ${config.textColor}`}>
-        {config.label}
-      </span>
-    </div>
-  );
-};
+// Alias pour compatibilité
+export const DriverStatusBadge = DriverStatusToggle;

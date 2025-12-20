@@ -1,172 +1,243 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { MapPin, Navigation, Phone, MessageCircle, ChevronUp, ChevronDown } from "lucide-react";
+import { useRef, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Phone, Navigation, MapPin, User, Clock, CheckCircle, XCircle, MoreVertical, MessageSquare, Headset, ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SlideToAction } from "./SlideToAction";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Order } from "@/types";
+import { useAppPreferences } from "@/hooks/useAppPreferences";
+import { useAppStore } from "@/stores/useAppStore";
+import { cn } from "@/lib/utils";
+
+// Utilitaires de distance simple (Haversine simplifié)
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3; // Rayon Terre en mètres
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance en mètres
+};
 
 interface ActiveOrderCardProps {
   order: Order;
   onStatusChange: (orderId: string, status: 'in_progress' | 'completed') => void;
+  onChatOpen?: () => void;
 }
 
-import { useAppStore } from "@/stores/useAppStore";
+export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrderCardProps) => {
+  const { openGPS } = useAppPreferences();
+  const { driverLocation } = useAppStore();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [sliderConfirmed, setSliderConfirmed] = useState(false);
 
-export const ActiveOrderCard = ({ order, onStatusChange }: ActiveOrderCardProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [key, setKey] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const isPickupPhase = order.status === 'accepted';
-  const isInProgressPhase = order.status === 'in_progress';
+  const isPickupPhace = order.status === 'accepted';
+  const targetLocation = isPickupPhace ? order.pickupLocation : order.dropoffLocation;
 
-  // IMPORTANT: Reset du slider à chaque changement d'étape pour éviter qu'il reste bloqué
-  useEffect(() => {
-    setKey((prev) => prev + 1);
-  }, [order.status]);
+  // Calcul de distance pour validation (Seuil 200m)
+  const distanceToTarget = useMemo(() => {
+    return calculateDistance(
+      driverLocation.lat, driverLocation.lng,
+      targetLocation.lat, targetLocation.lng
+    );
+  }, [driverLocation, targetLocation]);
 
-  // Configuration dynamique selon l'étape
-  const displayConfig = isPickupPhase ? {
-    title: "Récupération",
-    address: order.pickupLocation.address,
-    addressLabel: "Récupérer à",
-    targetLocation: order.pickupLocation, // Cible GPS : Client
-    action: "Glisser - Client récupéré",
-    nextStatus: 'in_progress' as const,
+  const isNearby = distanceToTarget < 200; // 200 mètres
+
+  // Config according to status
+  const statusConfig = isPickupPhace ? {
+    title: "En route vers le retrait",
+    color: "text-blue-500",
+    thumbColor: "bg-blue-600",
+    bgColor: "bg-blue-500/10",
+    nextAction: "Confirmer le Retrait",
+    nextStatus: 'in_progress' as const
   } : {
-    title: "En route",
-    address: order.dropoffLocation.address,
-    addressLabel: "Destination",
-    targetLocation: order.dropoffLocation, // Cible GPS : Destination finale
-    action: "Glisser - Course terminée",
-    nextStatus: 'completed' as const,
+    title: "En route vers la livraison",
+    color: "text-green-500",
+    thumbColor: "bg-green-600",
+    bgColor: "bg-green-500/10",
+    nextAction: "Terminer la Course",
+    nextStatus: 'completed' as const
   };
 
-  // FONCTION POUR LANCER LE GPS EXTERNE
-  const handleLaunchGPS = () => {
-    const { lat, lng } = displayConfig.targetLocation;
-    const app = useAppStore.getState().preferences.navigationApp; // Accès direct au store
+  const handleSlideEnd = (info: any) => {
+    if (!isNearby) return; // Sécurité supplémentaire
 
-    let url = "";
+    const containerWidth = containerRef.current?.offsetWidth || 300;
+    const threshold = containerWidth * 0.7;
 
-    if (app === 'waze') {
-      // Lien profond Waze
-      url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
-    } else if (app === 'apple_maps') {
-      // Lien Apple Maps
-      url = `http://maps.apple.com/?daddr=${lat},${lng}`;
-    } else {
-      // Google Maps (Défaut)
-      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    if (info.offset.x >= threshold) {
+      setSliderConfirmed(true);
+      setTimeout(() => {
+        onStatusChange(order.id, statusConfig.nextStatus);
+        setSliderConfirmed(false);
+      }, 300);
     }
-
-    window.open(url, '_blank');
   };
 
   return (
     <motion.div
-      className="fixed bottom-0 left-0 right-0 z-40"
-      initial={{ y: "100%" }}
-      animate={{ y: 0 }}
-      transition={{ type: "spring", damping: 25 }}
+      initial={{ y: 100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 100, opacity: 0 }}
+      className="fixed bottom-0 left-0 right-0 z-50 p-4"
     >
-      <div className="glass border-t border-border/30 rounded-t-3xl shadow-2xl">
-        {/* Handle */}
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex w-full items-center justify-center py-2"
+      <Card className="border-t border-x border-border/50 shadow-2xl bg-card/95 backdrop-blur-xl rounded-t-3xl overflow-hidden transition-all duration-300">
+
+        {/* HEADER */}
+        <div
+          className={cn("px-6 py-4 flex justify-between items-center border-b border-border/50 cursor-pointer hover:bg-white/5 transition-colors", statusConfig.bgColor)}
+          onClick={() => setIsCollapsed(!isCollapsed)}
         >
-          {isExpanded ? (
-            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-          ) : (
-            <ChevronUp className="h-5 w-5 text-muted-foreground" />
-          )}
-        </button>
-
-        <div className="px-4 pb-4">
-          {/* Header avec Actions */}
-          <div className="flex items-center justify-between mb-4">
-
-            {/* BOUTON GPS ACTIF */}
-            <Button
-              variant="outline"
-              className="flex items-center gap-2 h-auto py-2 px-3 border-accent/20 bg-accent/10 hover:bg-accent/20"
-              onClick={handleLaunchGPS}
-            >
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-white">
+          <div className="flex items-center gap-3">
+            <div className={cn("h-3 w-3 rounded-full animate-pulse ring-2 ring-white/20", statusConfig.thumbColor)} />
+            <div>
+              <span className={cn("font-bold text-sm uppercase tracking-wide block leading-none", statusConfig.color)}>
+                {statusConfig.title}
+              </span>
+              {/* Affichage Distance */}
+              <span className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                 <Navigation className="h-3 w-3" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-bold text-accent">GPS</p>
-                <p className="text-[10px] text-muted-foreground leading-none">
-                  Ouvrir Maps
-                </p>
-              </div>
-            </Button>
-
-            {/* Quick Actions (Tél / Message) */}
-            <div className="flex gap-2">
-              <Button size="icon" variant="secondary" className="h-10 w-10 rounded-full">
-                <Phone className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="secondary" className="h-10 w-10 rounded-full">
-                <MessageCircle className="h-4 w-4" />
-              </Button>
+                {distanceToTarget > 1000
+                  ? `${(distanceToTarget / 1000).toFixed(1)} km`
+                  : `${Math.round(distanceToTarget)} m`}
+              </span>
             </div>
           </div>
 
-          {/* Titre de l'étape actuelle */}
-          <div className="mb-2 px-1">
-            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">{displayConfig.title}</p>
-          </div>
-
-          {/* Adresse principale (celle actuelle) */}
-          <div className="mb-4 rounded-xl bg-secondary/50 p-3 border border-border/50">
-            <div className="flex items-start gap-3">
-              <MapPin className="h-5 w-5 text-foreground mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">
-                  {displayConfig.addressLabel}
-                </p>
-                <p className="text-base font-semibold leading-tight">{displayConfig.address}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Détails étendus (Client, etc.) */}
-          <motion.div
-            initial={false}
-            animate={{ height: isExpanded ? "auto" : 0, opacity: isExpanded ? 1 : 0 }}
-            className="overflow-hidden mb-4"
-          >
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between rounded-xl bg-secondary/50 p-3">
-                <span className="text-sm text-muted-foreground">Client</span>
-                <span className="text-sm font-medium">{order.clientName}</span>
-              </div>
-
-              {/* Infos complémentaires selon phase */}
-              {isInProgressPhase && (
-                <div className="flex items-start gap-2 rounded-xl bg-secondary/50 p-3 opacity-70">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Point de départ (Historique)</p>
-                    <p className="text-sm">{order.pickupLocation.address}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Slider Action avec Key pour Reset */}
-          <div className="flex justify-center mt-2">
-            <SlideToAction
-              key={key}
-              label={displayConfig.action}
-              onConfirm={() => onStatusChange(order.id, displayConfig.nextStatus)}
-            />
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-background/50 backdrop-blur border-border/50">
+              <Clock className="mr-1 h-3 w-3" /> 12 min
+            </Badge>
+            {isCollapsed ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
           </div>
         </div>
-      </div>
+
+        {/* CORPS DE LA CARTE */}
+        <AnimatePresence>
+          {!isCollapsed && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <CardContent className="p-6 space-y-6">
+                {/* Client Info & Actions (inchangé) */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center border-2 border-border shadow-sm">
+                      <User className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg leading-none">{order.clientName}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">Client Premium ⭐ 4.9</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-10 w-10 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground border-primary/20 shadow-sm"
+                      onClick={onChatOpen}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-10 w-10 rounded-full bg-background/50 hover:bg-destructive hover:text-white border-destructive/20 shadow-sm"
+                      onClick={() => window.open('tel:+33100000000')}
+                    >
+                      <Headset className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator className="bg-border/50" />
+
+                {/* Destination */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {isPickupPhace ? "Lieu de prise en charge" : "Destination"}
+                    </p>
+                    <div className="flex items-start gap-2">
+                      <MapPin className={cn("h-5 w-5 mt-0.5 shrink-0", isPickupPhace ? "text-blue-500" : "text-green-500")} />
+                      <p className="font-medium text-base leading-snug">
+                        {targetLocation.address}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    size="lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/20 shadow-lg rounded-2xl h-14 w-14 p-0 shrink-0"
+                    onClick={() => openGPS(targetLocation.lat, targetLocation.lng)}
+                  >
+                    <Navigation className="h-6 w-6" />
+                  </Button>
+                </div>
+              </CardContent>
+
+              {/* FOOTER : Slider Intelligent */}
+              <CardFooter className="p-6 pt-0">
+                <div
+                  ref={containerRef}
+                  className={cn(
+                    "relative h-16 w-full rounded-full overflow-hidden p-1.5 select-none touch-none border shadow-inner transition-colors",
+                    isNearby
+                      ? "bg-secondary/40 border-white/5"
+                      : "bg-muted/30 border-dashed border-white/10 cursor-not-allowed"
+                  )}
+                >
+                  {/* Texte de fond */}
+                  <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+                    <span className={cn(
+                      "text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-2",
+                      isNearby ? "text-muted-foreground/60 animate-pulse" : "text-muted-foreground/40"
+                    )}>
+                      {isNearby ? "Glisser pour valider" : "Rapprochez-vous"}
+                      {!isNearby && <Lock className="h-3 w-3" />}
+                    </span>
+                  </div>
+
+                  {/* Thumb draggable ou locké */}
+                  <motion.div
+                    drag={isNearby ? "x" : false} // Désactivé si trop loin
+                    dragConstraints={containerRef}
+                    dragElastic={0.05}
+                    dragMomentum={false}
+                    dragSnapToOrigin={!sliderConfirmed}
+                    onDragEnd={(e, info) => handleSlideEnd(info)}
+                    className={cn(
+                      "h-full aspect-square rounded-full shadow-2xl flex items-center justify-center z-10 relative border-2 transition-all",
+                      isNearby
+                        ? cn(statusConfig.thumbColor, "cursor-grab active:cursor-grabbing border-white/20 text-white")
+                        : "bg-muted border-white/10 text-muted-foreground"
+                    )}
+                    animate={sliderConfirmed ? { x: "100%" } : { x: 0 }}
+                  >
+                    {isNearby ? <CheckCircle className="h-6 w-6" /> : <Navigation className="h-5 w-5 opacity-50" />}
+                  </motion.div>
+                </div>
+              </CardFooter>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Card>
     </motion.div>
   );
 };

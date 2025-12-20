@@ -1,153 +1,98 @@
 import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Order } from "@/types";
 
-// --- Fix Webpack/Vite Icons ---
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-    iconUrl: (icon as any).src || icon,
-    shadowUrl: (iconShadow as any).src || iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
-});
-L.Marker.prototype.options.icon = DefaultIcon;
-
-// --- Custom Icons ---
-const driverIcon = new L.Icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/3097/3097180.png",
-    iconSize: [46, 46],
-    iconAnchor: [23, 23],
-    popupAnchor: [0, -20],
-    className: "drop-shadow-lg"
+// Icône Voiture Personnalisée (Rotative et Fluide)
+const carIcon = new L.DivIcon({
+    className: "bg-transparent", // Important pour ne pas avoir de carré blanc
+    html: `<div style="
+    font-size: 24px; 
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); 
+    transform-origin: center;
+  ">🚗</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15] // Centré
 });
 
+// Icônes Points A et B
 const pickupIcon = new L.Icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
-    shadowSize: [41, 41],
+    shadowSize: [41, 41]
 });
 
 const dropoffIcon = new L.Icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
-    shadowSize: [41, 41],
+    shadowSize: [41, 41]
 });
 
-interface DriverMapProps {
-    activeOrder: Order | null;
-    driverLocation: { lat: number; lng: number };
-    className?: string;
-}
-
-// --- Smart Focus Logic (Optimized) ---
-const MapUpdater = ({ activeOrder, driverLocation }: { activeOrder: Order | null; driverLocation: { lat: number; lng: number } }) => {
+// Composant pour recentrer la carte (Caméra Fluide)
+const MapUpdater = ({ location, activeOrder }: { location: { lat: number; lng: number }, activeOrder: Order | null }) => {
     const map = useMap();
-    const hasZoomedRef = useRef<string>("");
 
     useEffect(() => {
-        // Clé unique pour l'état actuel (ID commande + Statut)
-        const currentKey = activeOrder ? `${activeOrder.id}-${activeOrder.status}` : "idle";
-
-        // Anti-rebond : On ne re-zoom pas si on est déjà calé sur cet état (sauf si c'est le premier render)
-        // Cela permet au driver de bouger la carte sans que ça "saute" tout le temps
-        if (hasZoomedRef.current === currentKey) return;
-
-        if (!activeOrder) {
-            map.setView([driverLocation.lat, driverLocation.lng], 15, { animate: true });
+        // Si une commande est active, on cadre large pour voir Départ + Arrivée
+        if (activeOrder) {
+            const bounds = L.latLngBounds(
+                [activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng],
+                [activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]
+            );
+            bounds.extend([location.lat, location.lng]); // On inclut la voiture
+            map.flyToBounds(bounds, { padding: [50, 150], duration: 1.5 }); // Zoom fluide
         } else {
-            const points: L.LatLngTuple[] = [[driverLocation.lat, driverLocation.lng]];
-
-            if (activeOrder.status === 'accepted') {
-                points.push([activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng]);
-            } else if (activeOrder.status === 'in_progress') {
-                points.push([activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]);
-            }
-
-            const bounds = L.latLngBounds(points);
-            map.fitBounds(bounds, { padding: [80, 80], maxZoom: 16, animate: true });
+            // Mode Libre : On suit la voiture de près
+            map.flyTo([location.lat, location.lng], 16, { duration: 1.5 });
         }
-
-        hasZoomedRef.current = currentKey;
-
-    }, [activeOrder?.id, activeOrder?.status, map]); // RETRAIT DE driverLocation des dépendances !
+    }, [location, activeOrder, map]);
 
     return null;
 };
 
-export const DriverMap = ({ activeOrder, driverLocation, className = "" }: DriverMapProps) => {
-    const isPickupPhase = activeOrder?.status === 'accepted';
-    const isInProgress = activeOrder?.status === 'in_progress';
+interface DriverMapProps {
+    driverLocation: { lat: number; lng: number };
+    activeOrder: Order | null;
+}
 
-    // Route Logic
-    const routeToPickup = (activeOrder && isPickupPhase) ? [
-        [driverLocation.lat, driverLocation.lng],
-        [activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng]
-    ] as [number, number][] : [];
-
-    const routeToDropoff = activeOrder ? (
-        isInProgress
-            ? [[driverLocation.lat, driverLocation.lng], [activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]]
-            : [[activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng], [activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]]
-    ) as [number, number][] : [];
-
+export const DriverMap = ({ driverLocation, activeOrder }: DriverMapProps) => {
     return (
-        <div className={`relative h-full w-full ${className}`}>
-            <MapContainer
-                center={[driverLocation.lat, driverLocation.lng]}
-                zoom={13}
-                style={{ height: "100%", width: "100%" }}
-                scrollWheelZoom={false}
-                className="h-full w-full rounded-3xl z-0"
-                zoomControl={false}
-            >
-                <ZoomControl position="bottomright" />
+        <MapContainer
+            center={[driverLocation.lat, driverLocation.lng]}
+            zoom={15}
+            style={{ height: "100%", width: "100%" }}
+            zoomControl={false} // On retire les boutons +/- pour le style "App Mobile"
+            attributionControl={false} // On retire le copyright pour le style "Clean"
+            className="z-0 outline-none" // Retire les bordures de focus
+        >
+            <TileLayer
+                // Fond de carte "Voyager" (Clair et Pro)
+                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            />
 
-                <TileLayer
-                    attribution='&copy; CARTO'
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                />
+            {/* Voiture Chauffeur (Animée via CSS .leaflet-marker-icon) */}
+            <Marker position={[driverLocation.lat, driverLocation.lng]} icon={carIcon} />
 
-                <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon} zIndexOffset={1000} />
+            {/* Points de la mission */}
+            {activeOrder && (
+                <>
+                    <Marker position={[activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng]} icon={pickupIcon}>
+                        <Popup>Retrait: {activeOrder.pickupLocation.address}</Popup>
+                    </Marker>
+                    <Marker position={[activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]} icon={dropoffIcon}>
+                        <Popup>Livraison: {activeOrder.dropoffLocation.address}</Popup>
+                    </Marker>
+                </>
+            )}
 
-                {activeOrder && (
-                    <>
-                        {isPickupPhase && (
-                            <>
-                                <Polyline positions={routeToPickup} pathOptions={{ color: '#3b82f6', dashArray: '10, 10', weight: 5, opacity: 0.9 }} />
-                                <Marker position={[activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng]} icon={pickupIcon}>
-                                    <Popup>Retrait: {activeOrder.pickupLocation.address}</Popup>
-                                </Marker>
-                            </>
-                        )}
-
-                        <Polyline
-                            positions={routeToDropoff}
-                            pathOptions={{
-                                color: isInProgress ? '#3b82f6' : '#94a3b8',
-                                dashArray: isInProgress ? '10, 10' : '5, 15',
-                                weight: isInProgress ? 5 : 3,
-                                opacity: isInProgress ? 0.9 : 0.5
-                            }}
-                        />
-                        <Marker position={[activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]} icon={dropoffIcon}>
-                            <Popup>Destination: {activeOrder.dropoffLocation.address}</Popup>
-                        </Marker>
-                    </>
-                )}
-
-                <MapUpdater activeOrder={activeOrder} driverLocation={driverLocation} />
-            </MapContainer>
-            <div className="absolute inset-0 pointer-events-none rounded-3xl bg-gradient-to-t from-background/10 to-transparent" />
-        </div>
+            <MapUpdater location={driverLocation} activeOrder={activeOrder} />
+        </MapContainer>
     );
 };

@@ -116,12 +116,7 @@ export const DriverHomeScreen = () => {
             />
           </div>
 
-          <div className="relative z-10 flex flex-col items-center bg-background/60 backdrop-blur-md p-6 rounded-3xl border border-border/20 shadow-lg mt-auto mb-6">
-            <DriverStatusToggle />
-            <p className="mt-4 text-sm font-medium text-foreground">
-              {isOnDuty ? "Vous êtes en ligne" : "Appuyez pour commencer"}
-            </p>
-          </div>
+
 
           {/* Dev Tools Overlay */}
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-2">
@@ -185,29 +180,7 @@ export const DriverHomeScreen = () => {
           </motion.div>
         )}
 
-        {/* Accès Profil & Settings - Hidden during active order */}
-        {!currentOrder && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="glass border-border/30 cursor-pointer hover:bg-secondary/20 transition-colors" onClick={toggleSidebar}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                    <Car className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Mon Profil & Véhicule</p>
-                    <p className="text-xs text-muted-foreground">Consulter l'historique</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={toggleSidebar}>Modifier</Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+
       </div>
 
       <NewOrderModal
