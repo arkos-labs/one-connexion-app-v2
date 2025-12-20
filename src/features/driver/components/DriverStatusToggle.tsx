@@ -3,10 +3,22 @@ import { Power } from "lucide-react";
 import { useAppStore } from "@/stores/useAppStore";
 import { cn } from "@/lib/utils";
 
-export const DriverStatusToggle = () => {
-    const { isOnDuty, setDriverStatus } = useAppStore();
+import { toast } from "@/hooks/use-toast";
 
-    const toggle = () => setDriverStatus(isOnDuty ? "offline" : "online");
+export const DriverStatusToggle = () => {
+    const { isOnDuty, setDriverStatus, currentOrder } = useAppStore();
+
+    const toggle = () => {
+        if (isOnDuty && currentOrder) {
+            toast({
+                title: "Action refusée",
+                description: "Veuillez terminer votre course active avant de vous déconnecter.",
+                variant: "destructive",
+            });
+            return;
+        }
+        setDriverStatus(isOnDuty ? "offline" : "online");
+    };
 
     return (
         <div

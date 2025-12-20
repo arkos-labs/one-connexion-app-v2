@@ -10,10 +10,15 @@ import { SlideToAction } from "./SlideToAction";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { ClientChat } from "./ClientChat";
+import { NewOrderModal } from "./NewOrderModal";
+import { useTrafficSimulation } from "@/hooks/useTrafficSimulation";
+import { useIncomingOrderAlert } from "@/hooks/useIncomingOrderAlert";
+import { useDriverPosition } from "@/hooks/useDriverPosition";
 
 export const DriverHomeScreen = () => {
   const {
     currentOrder,
+    orders,
     driverStatus,
     acceptOrder,
     updateOrderStatus,
@@ -26,20 +31,23 @@ export const DriverHomeScreen = () => {
     driverLocation
   } = useAppStore();
 
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const { simulateTravel } = useDriverPosition();
+
+  // Hooks simulation et alertes
+  useTrafficSimulation();
+  useIncomingOrderAlert();
+
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Fonction démo pour simuler une commande
-  const handleSimulateOrder = () => {
-    setIsDemoLoading(true);
-    setTimeout(() => {
-      triggerNewOrder();
-      setIsDemoLoading(false);
-      toast({
-        title: "Nouvelle commande ! 🔔",
-        description: "Un client a besoin de vous à proximité.",
-      });
-    }, 2000);
+  // Find any pending order
+  const pendingOrder = orders.find(o => o.status === 'pending');
+
+
+
+  const handleSimulateTravel = () => {
+    if (!currentOrder) return;
+    const target = currentOrder.status === 'accepted' ? currentOrder.pickupLocation : currentOrder.dropoffLocation;
+    simulateTravel(target);
   };
 
   return (
@@ -52,6 +60,18 @@ export const DriverHomeScreen = () => {
 
         {/* Boutons flottants sur la carte (GPS, Recentrer...) */}
         <div className="absolute right-4 bottom-4 flex flex-col gap-2 pointer-events-auto z-[400]">
+          {/* Simulation Button (Demo only) */}
+          {currentOrder && (
+            <Button
+              size="icon"
+              onClick={handleSimulateTravel}
+              className="rounded-full shadow-lg bg-orange-500 hover:bg-orange-600 text-white h-10 w-10"
+              title="Simuler le trajet"
+            >
+              <Zap className="h-4 w-4" />
+            </Button>
+          )}
+
           <Button size="icon" className="rounded-full shadow-lg bg-white text-black hover:bg-zinc-100 h-10 w-10">
             <Navigation className="h-4 w-4" />
           </Button>
@@ -122,21 +142,27 @@ export const DriverHomeScreen = () => {
                 </Card>
               </div>
 
-              {/* Bouton Démo (À retirer en prod) */}
-              <Button
-                onClick={handleSimulateOrder}
-                disabled={isDemoLoading || driverStatus !== 'online'}
-                className="w-full h-12 text-base font-medium shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all"
-              >
-                {isDemoLoading ? "Recherche de client..." : driverStatus === 'online' ? "Simuler une commande (Démo)" : "Passez en ligne d'abord"}
-                {!isDemoLoading && driverStatus === 'online' && <Zap className="ml-2 h-4 w-4 fill-white" />}
-              </Button>
+              {/* Statut hors ligne ou recherche msg */}
+              <div className="text-center py-4 text-muted-foreground animate-pulse">
+                {driverStatus === 'online' ? (
+                  <p className="flex items-center justify-center gap-2">
+                    <Zap className="h-4 w-4" /> Recherche de courses...
+                  </p>
+                ) : (
+                  <p>Passez en ligne pour commencer</p>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Résumé de fin de course (Reste en overlay car c'est une modale) */}
+      {/* MODALES */}
+
+      {/* 1. Nouvelle Commande (Pending) */}
+      <NewOrderModal />
+
+      {/* 2. Résumé de fin de course */}
       <AnimatePresence>
         {lastCompletedOrder && (
           <RideSummary

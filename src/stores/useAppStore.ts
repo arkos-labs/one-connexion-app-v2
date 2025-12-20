@@ -109,7 +109,7 @@ export const useAppStore = create<AppState>()(
       isOnDuty: false,
       driverLocation: { lat: 48.8566, lng: 2.3522 },
 
-      orders: MOCK_ORDERS,
+      orders: [],
       currentOrder: null,
       history: [],
       earnings: 0,
@@ -260,7 +260,11 @@ export const useAppStore = create<AppState>()(
         earnings: state.earnings,
         preferences: state.preferences,
         documents: state.documents,
-        vehicle: state.vehicle
+        vehicle: state.vehicle,
+        currentOrder: state.currentOrder,
+        driverStatus: state.driverStatus,
+        isOnDuty: state.isOnDuty,
+        messages: state.messages
       }),
     }
   )
