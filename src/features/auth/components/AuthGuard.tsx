@@ -10,16 +10,23 @@ interface AuthGuardProps {
 
 export const AuthGuard = ({ children, requireAuth = true }: AuthGuardProps) => {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, isSplashComplete, setSplashComplete } = useAppStore();
+  const {
+    isAuthenticated,
+    isLoading,
+    setIsLoading,
+    isSplashComplete,
+    setSplashComplete
+  } = useAppStore();
 
   useEffect(() => {
     // Simulate initial auth check
     const timer = setTimeout(() => {
       setSplashComplete(true);
+      setIsLoading(false);
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [setSplashComplete]);
+  }, [setSplashComplete, setIsLoading]);
 
   useEffect(() => {
     if (isSplashComplete && !isLoading) {
