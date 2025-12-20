@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { useState, useEffect } from "react";
 import { createAuthSlice } from "./slices/authSlice";
 import { createDriverSlice } from "./slices/driverSlice";
 import { createOrderSlice } from "./slices/orderSlice";
@@ -91,6 +92,21 @@ export const useAppStore = create<AppStore>()(
 
         return state as AppStore;
       },
+
+      /**
+       * Track hydration state to prevent premature redirects in AuthGuard
+       * This is critical to avoid logging out users on page refresh
+       */
+      onRehydrateStorage: () => {
+        console.log("🔄 Store hydration started...");
+        return (state, error) => {
+          if (error) {
+            console.error("❌ Store hydration failed:", error);
+          } else {
+            console.log("✅ Store hydration complete");
+          }
+        };
+      },
     }
   )
 );
@@ -133,6 +149,30 @@ export const useOrders = () => useAppStore((state) => ({
   completeOrder: state.completeOrder,
   rejectOrder: state.rejectOrder,
 }));
+
+/**
+ * Hook to check if the store has been hydrated from localStorage
+ * CRITICAL: Use this in AuthGuard to prevent premature redirects
+ */
+export const useHydration = () => {
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    // Check if the store has been hydrated
+    const unsubscribe = useAppStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+
+    // If already hydrated, set immediately
+    if (useAppStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+
+    return unsubscribe;
+  }, []);
+
+  return hydrated;
+};
 
 // Export types for convenience
 export type { AppStore } from "./types";
