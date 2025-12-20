@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Clock, Euro, X, Navigation, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,13 @@ export const NewOrderModal = ({ order, onAccept, onReject }: NewOrderModalProps)
 
     return () => clearInterval(timer);
   }, [order, onReject]);
+
+  // Stable handler to prevent slider re-renders
+  const handleConfirm = useCallback(() => {
+    if (order) {
+      onAccept(order.id);
+    }
+  }, [order, onAccept]);
 
   return (
     <AnimatePresence>
@@ -153,9 +160,7 @@ export const NewOrderModal = ({ order, onAccept, onReject }: NewOrderModalProps)
             <div className="p-4 pt-0 flex flex-col items-center gap-3">
               <SlideToAction
                 label="Glisser pour accepter"
-                completeLabel="Course acceptée !"
-                variant="success"
-                onComplete={() => onAccept(order.id)}
+                onConfirm={handleConfirm}
               />
 
               <Button

@@ -1,106 +1,85 @@
-import { useState, useRef } from "react";
-import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
-import { ChevronRight, Check, X } from "lucide-react";
+import { useState, useRef, useEffect, memo } from "react";
+import { motion, useAnimation, PanInfo } from "framer-motion";
+import { ChevronRight, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SlideToActionProps {
-  onComplete: () => void;
-  label: string;
-  completeLabel: string;
-  variant?: "success" | "danger";
-  disabled?: boolean;
+  onConfirm: () => void;
+  label?: string;
+  isComplete?: boolean;
+  className?: string;
 }
 
-export const SlideToAction = ({
-  onComplete,
-  label,
-  completeLabel,
-  variant = "success",
-  disabled = false,
-}: SlideToActionProps) => {
-  const [isComplete, setIsComplete] = useState(false);
+const SlideToActionComponent = ({ onConfirm, label = "Glisser pour valider", isComplete = false, className }: SlideToActionProps) => {
+  const [confirmed, setConfirmed] = useState(false);
+  const controls = useAnimation();
   const constraintsRef = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  
-  const trackWidth = 280;
-  const thumbSize = 56;
-  const maxSlide = trackWidth - thumbSize - 8;
 
-  const backgroundOpacity = useTransform(x, [0, maxSlide], [0, 1]);
-  const labelOpacity = useTransform(x, [0, maxSlide * 0.5], [1, 0]);
-  const checkOpacity = useTransform(x, [maxSlide * 0.7, maxSlide], [0, 1]);
+  // Calculate width dynamically on drag end to ensure it works even if mounted during animation
+  const handleDragEnd = async (_: any, info: PanInfo) => {
+    if (!constraintsRef.current) return;
 
-  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (info.offset.x >= maxSlide * 0.8) {
-      setIsComplete(true);
-      onComplete();
+    // Width of container - Width of button (48px) - Padding (both sides ~8px)
+    // Using simple offset measurement
+    const containerWidth = constraintsRef.current.offsetWidth;
+    const dragWidth = containerWidth - 56; // 56px accounting for button size + potential padding
+
+    if (info.offset.x > dragWidth * 0.5) { // Threshold reduced to 50% for better UX
+      setConfirmed(true);
+      await controls.start({ x: dragWidth });
+      onConfirm(); // Fire immediatly
+    } else {
+      controls.start({ x: 0 });
     }
   };
-
-  const bgColor = variant === "success" ? "bg-accent" : "bg-destructive";
-  const thumbColor = variant === "success" ? "bg-accent" : "bg-destructive";
-
-  if (isComplete) {
-    return (
-      <motion.div
-        className={`relative flex h-16 w-[280px] items-center justify-center rounded-full ${bgColor}`}
-        initial={{ scale: 1 }}
-        animate={{ scale: [1, 1.02, 1] }}
-        transition={{ duration: 0.3 }}
-      >
-        <motion.div
-          className="flex items-center gap-2 text-accent-foreground font-medium"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <Check className="h-5 w-5" />
-          {completeLabel}
-        </motion.div>
-      </motion.div>
-    );
-  }
 
   return (
     <div
       ref={constraintsRef}
-      className={`relative flex h-16 w-[280px] items-center rounded-full border border-border/50 bg-secondary/50 backdrop-blur-sm ${
-        disabled ? "opacity-50" : ""
-      }`}
+      className={cn(
+        "relative h-14 w-full rounded-full bg-secondary/50 p-1 backdrop-blur-sm border border-border/50 overflow-hidden",
+        isComplete && "bg-green-500/20 border-green-500/50",
+        className
+      )}
     >
-      {/* Progress Background */}
-      <motion.div
-        className={`absolute inset-1 rounded-full ${bgColor}`}
-        style={{ opacity: backgroundOpacity, originX: 0 }}
-      />
+      {/* Texte de fond */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span className={cn(
+          "text-sm font-semibold uppercase tracking-wider transition-opacity duration-300",
+          confirmed ? "opacity-0" : "text-muted-foreground opacity-50"
+        )}>
+          {label}
+        </span>
+      </div>
 
-      {/* Label */}
-      <motion.span
-        className="absolute inset-0 flex items-center justify-center text-sm font-medium text-muted-foreground"
-        style={{ opacity: labelOpacity }}
-      >
-        {label}
-      </motion.span>
+      {/* Texte de succès */}
+      <div className={cn(
+        "absolute inset-0 flex items-center justify-center transition-opacity duration-300 pointer-events-none",
+        confirmed ? "opacity-100" : "opacity-0"
+      )}>
+        <span className="text-sm font-bold text-green-500 uppercase tracking-widest flex items-center gap-2">
+          <Check className="h-4 w-4" /> Validé
+        </span>
+      </div>
 
-      {/* Complete Check */}
+      {/* Le Bouton Glissant */}
       <motion.div
-        className="absolute inset-0 flex items-center justify-center"
-        style={{ opacity: checkOpacity }}
-      >
-        <Check className="h-5 w-5 text-accent-foreground" />
-      </motion.div>
-
-      {/* Draggable Thumb */}
-      <motion.div
-        className={`absolute left-1 flex h-14 w-14 cursor-grab items-center justify-center rounded-full ${thumbColor} shadow-lg active:cursor-grabbing`}
-        drag={disabled ? false : "x"}
-        dragConstraints={{ left: 0, right: maxSlide }}
-        dragElastic={0}
+        drag="x"
+        dragConstraints={constraintsRef}
+        dragElastic={0.05} // Reduced elasticity
         dragMomentum={false}
-        style={{ x }}
         onDragEnd={handleDragEnd}
-        whileTap={{ scale: 0.95 }}
+        animate={controls}
+        whileTap={{ scale: 1.05, cursor: "grabbing" }}
+        className={cn(
+          "flex h-12 w-12 cursor-grab items-center justify-center rounded-full shadow-lg active:cursor-grabbing z-10",
+          confirmed ? "bg-green-500 text-white" : "bg-primary text-primary-foreground"
+        )}
       >
-        <ChevronRight className="h-6 w-6 text-accent-foreground" />
+        {confirmed ? <Check className="h-6 w-6" /> : <ChevronRight className="h-6 w-6" />}
       </motion.div>
     </div>
   );
 };
+
+export const SlideToAction = memo(SlideToActionComponent);

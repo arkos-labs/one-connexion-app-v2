@@ -30,6 +30,7 @@ interface AppState {
   currentOrder: Order | null;
   history: Order[];
   earnings: number;
+  lastCompletedOrder: Order | null;
 
   // Actions
   setUser: (user: User | null) => void;
@@ -46,6 +47,8 @@ interface AppState {
   updateOrderStatus: (status: Order['status']) => void;
   completeOrder: () => void;
   rejectOrder: (orderId: string) => void;
+  triggerNewOrder: () => void; // NEW: Simulation
+  clearSummary: () => void;
 }
 
 // MOCK DATA
@@ -87,6 +90,7 @@ export const useAppStore = create<AppState>()(
       currentOrder: null,
       history: [],
       earnings: 0,
+      lastCompletedOrder: null,
 
       // Actions
       setUser: (user) => set({ user, isAuthenticated: !!user }),
@@ -140,13 +144,36 @@ export const useAppStore = create<AppState>()(
           earnings: state.earnings + state.currentOrder.price,
           history: [completedOrder, ...state.history],
           currentOrder: null,
-          driverStatus: "online"
+          driverStatus: "online",
+          lastCompletedOrder: completedOrder
         };
       }),
+
+      clearSummary: () => set({ lastCompletedOrder: null }),
 
       rejectOrder: (orderId) => set((state) => ({
         orders: state.orders.filter(o => o.id !== orderId)
       })),
+
+      // NEW: Générateur de fausses commandes pour le test
+      triggerNewOrder: () => set((state) => {
+        const id = Math.random().toString(36).substr(2, 9);
+        // Random offset from center Paris
+        const lat = 48.8566 + (Math.random() - 0.5) * 0.05;
+        const lng = 2.3522 + (Math.random() - 0.5) * 0.05;
+
+        const newOrder: Order = {
+          id,
+          clientName: `Client #${Math.floor(Math.random() * 1000)}`,
+          pickupLocation: { lat, lng, address: "Nouvelle Adresse, Paris" },
+          dropoffLocation: { lat: lat + 0.01, lng: lng + 0.01, address: "Destination, Paris" },
+          price: Math.floor(Math.random() * 30) + 10,
+          distance: "3.5 km",
+          status: "pending"
+        };
+
+        return { orders: [...state.orders, newOrder] };
+      })
     }),
     {
       name: "one-connexion-store-v2",

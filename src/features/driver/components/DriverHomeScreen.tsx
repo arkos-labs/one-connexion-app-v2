@@ -1,14 +1,16 @@
-import { useMemo } from "react"; // Optimisation
-import { motion } from "framer-motion";
-import { Menu, Bell, TrendingUp, Clock, Euro, Settings, PlayCircle } from "lucide-react";
+import { useMemo, useCallback } from "react"; // Optimisation
+import { motion, AnimatePresence } from "framer-motion";
+import { Menu, Bell, TrendingUp, Clock, Euro, Settings, PlayCircle, PlusCircle } from "lucide-react"; // Ajout PlusCircle
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DriverStatusToggle, DriverStatusBadge } from "./DriverStatusToggle";
 import { NewOrderModal } from "./NewOrderModal";
 import { ActiveOrderCard } from "./ActiveOrderCard";
 import { DriverMap } from "./DriverMap";
+import { RideSummary } from "./RideSummary";
 import { useAppStore } from "@/stores/useAppStore";
 import { useDriverPosition } from "@/hooks/useDriverPosition";
+import { useDriverAlerts } from "@/hooks/useDriverAlerts"; // NEW Hook
 
 export const DriverHomeScreen = () => {
   const {
@@ -20,11 +22,16 @@ export const DriverHomeScreen = () => {
     rejectOrder,
     updateOrderStatus,
     completeOrder,
+    triggerNewOrder, // NEW Action
     isOnDuty,
-    driverLocation
+    driverLocation,
+    lastCompletedOrder
   } = useAppStore();
 
   const { simulateTravel } = useDriverPosition();
+
+  // Active le système d'alerte (Son + Toast)
+  useDriverAlerts();
 
   // --- KPI LOGIC (Temps Réel) ---
   const stats = useMemo(() => {
@@ -42,8 +49,8 @@ export const DriverHomeScreen = () => {
     ];
   }, [history, earnings]);
 
-  const handleAcceptOrder = (orderId: string) => acceptOrder(orderId);
-  const handleRejectOrder = (orderId: string) => rejectOrder(orderId);
+  const handleAcceptOrder = useCallback((orderId: string) => acceptOrder(orderId), [acceptOrder]);
+  const handleRejectOrder = useCallback((orderId: string) => rejectOrder(orderId), [rejectOrder]);
 
   const handleOrderStatusChange = (orderId: string, status: 'in_progress' | 'completed') => {
     if (status === 'completed') {
@@ -103,16 +110,32 @@ export const DriverHomeScreen = () => {
           </div>
 
           {/* Dev Tools Overlay */}
-          {currentOrder && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="absolute bottom-4 left-4 z-20 opacity-80 hover:opacity-100 shadow-xl"
-              onClick={handleSimulateTrip}
-            >
-              <PlayCircle className="mr-2 h-4 w-4" /> Demo: Avancer
-            </Button>
-          )}
+          {/* Dev Tools Overlay */}
+          <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-2">
+            {/* Simulation Trajet */}
+            {currentOrder && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="opacity-90 hover:opacity-100 shadow-xl"
+                onClick={handleSimulateTrip}
+              >
+                <PlayCircle className="mr-2 h-4 w-4" /> Demo: Avancer
+              </Button>
+            )}
+
+            {/* Simulation Nouvelle Commande (Visible seulement si en ligne et libre) */}
+            {isOnDuty && !currentOrder && (
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-xl"
+                onClick={triggerNewOrder}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" /> Test: New Order
+              </Button>
+            )}
+          </div>
         </motion.div>
 
         {/* Stats Grid (Dynamic) */}
@@ -170,6 +193,12 @@ export const DriverHomeScreen = () => {
           onStatusChange={handleOrderStatusChange}
         />
       )}
+
+      <AnimatePresence>
+        {lastCompletedOrder && (
+          <RideSummary order={lastCompletedOrder} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
