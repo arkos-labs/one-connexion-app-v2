@@ -4,23 +4,20 @@ import { Menu, Bell, TrendingUp, Clock, Euro, Settings, PlayCircle, PlusCircle, 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DriverStatusToggle, DriverStatusBadge } from "./DriverStatusToggle";
-import { NewOrderModal } from "./NewOrderModal";
 import { ActiveOrderCard } from "./ActiveOrderCard";
 import { DriverMap } from "./DriverMap";
-// DriverProfile removed
-import { RideHistorySheet } from "./RideHistorySheet"; // NEW Import
+import { RideHistorySheet } from "./RideHistorySheet";
 import { DriverSettings } from "./DriverSettings";
 import { useAppStore } from "@/stores/useAppStore";
 import { useDriverPosition } from "@/hooks/useDriverPosition";
 import { useDriverAlerts } from "@/hooks/useDriverAlerts";
-import { useIncomingOrderAlert } from "@/hooks/useIncomingOrderAlert"; // <-- Importez le hook
 import { useSidebar } from "@/components/ui/sidebar";
 import { RideSummary } from "./RideSummary";
 import { AnimatePresence } from "framer-motion";
 
 export const DriverHomeScreen = () => {
   const { toggleSidebar } = useSidebar();
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false); // <-- Nouvel état pour l'historique
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
 
   const {
@@ -40,7 +37,6 @@ export const DriverHomeScreen = () => {
 
   const { simulateTravel } = useDriverPosition();
   useDriverAlerts();
-  useIncomingOrderAlert(); // ACTIVATION DU SYSTÈME D'ALERTE 🔔
 
   const stats = useMemo(() => {
     const count = history.length;
@@ -56,8 +52,6 @@ export const DriverHomeScreen = () => {
     ];
   }, [history, earnings]);
 
-  const handleAcceptOrder = (orderId: string) => acceptOrder(orderId);
-  const handleRejectOrder = (orderId: string) => rejectOrder(orderId);
 
   const handleOrderStatusChange = (orderId: string, status: 'in_progress' | 'completed') => {
     if (status === 'completed') {
@@ -75,32 +69,9 @@ export const DriverHomeScreen = () => {
     simulateTravel({ lat: target.lat, lng: target.lng });
   };
 
-  const pendingOrder = isOnDuty && !currentOrder
-    ? orders.find(o => o.status === 'pending') || null
-    : null;
-
   return (
     <div className="min-h-screen pb-32">
-      {/* Header */}
-      <header className="sticky top-0 z-30 glass border-b border-border/30">
-        <div className="flex items-center justify-between p-4">
-          <Button variant="ghost" size="icon" onClick={toggleSidebar}>
-            <Menu className="h-5 w-5" />
-          </Button>
-          <DriverStatusBadge />
-
-          <div className="flex items-center gap-1">
-            {/* Bouton Réglages Rapide */}
-            <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
-              <Settings className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              {isOnDuty && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-accent" />}
-            </Button>
-          </div>
-        </div>
-      </header>
+      {/* Header removed from home screen as it is now global */}
 
       <div className="p-4 space-y-6">
         {/* Map Container */}
@@ -115,8 +86,6 @@ export const DriverHomeScreen = () => {
               driverLocation={driverLocation}
             />
           </div>
-
-
 
           {/* Dev Tools Overlay */}
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-2">
@@ -180,14 +149,9 @@ export const DriverHomeScreen = () => {
           </motion.div>
         )}
 
-
       </div>
 
-      <NewOrderModal
-        order={pendingOrder}
-        onAccept={handleAcceptOrder}
-        onReject={handleRejectOrder}
-      />
+      {/* NewOrderModal Removed from here */}
 
       {currentOrder && (
         <ActiveOrderCard
@@ -204,7 +168,6 @@ export const DriverHomeScreen = () => {
       </AnimatePresence>
 
       {/* Sheets */}
-      {/* DriverProfile removed */}
       <RideHistorySheet isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
       <DriverSettings open={isSettingsOpen} onOpenChange={setSettingsOpen} />
 

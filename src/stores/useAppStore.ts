@@ -125,6 +125,7 @@ export const useAppStore = create<AppState>()(
         { id: "1", name: "Permis de conduire", status: "verified", expiryDate: "2025-01-01" },
         { id: "2", name: "Carte VTC", status: "verified", expiryDate: "2024-12-15" },
         { id: "3", name: "Assurance RC Pro", status: "expired", expiryDate: "2023-11-20" },
+        { id: "5", name: "Assurance Véhicule", status: "missing" },
         { id: "4", name: "Kbis", status: "pending" },
       ],
       preferences: {
@@ -227,7 +228,7 @@ export const useAppStore = create<AppState>()(
       })),
     }),
     {
-      name: "one-connexion-store-v2",
+      name: "one-connexion-store-v3",
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
