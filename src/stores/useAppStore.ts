@@ -13,12 +13,20 @@ interface User {
   avatarUrl?: string;
 }
 
-// NEW: Types pour les préférences
+// 1. Nouvelles Interfaces
+export interface DriverDocument {
+  id: string;
+  name: string; // ex: "Permis de conduire", "Assurance"
+  status: 'verified' | 'pending' | 'expired' | 'missing';
+  expiryDate?: string;
+}
+
 export interface DriverPreferences {
   vehicleType: "car" | "bike" | "scooter";
   navigationApp: "waze" | "google_maps" | "apple_maps";
   soundEnabled: boolean;
   darkMode: boolean;
+  autoAccept: boolean; // NOUVEAU
 }
 
 interface AppState {
@@ -26,7 +34,7 @@ interface AppState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isSplashComplete: boolean; // Keep existing state
+  isSplashComplete: boolean;
 
   // Driver State
   driverStatus: DriverStatus;
@@ -38,19 +46,21 @@ interface AppState {
   currentOrder: Order | null;
   history: Order[];
   earnings: number;
-  lastCompletedOrder: Order | null; // Keep existing state
+  lastCompletedOrder: Order | null;
 
-  // NEW: Preferences State
+  // 2. Nouveaux États
+  vehicle: { model: string; plate: string; color: string } | null;
+  documents: DriverDocument[];
   preferences: DriverPreferences;
 
   // Actions
   setUser: (user: User | null) => void;
-  setIsLoading: (loading: boolean) => void; // Keep existing action
-  setSplashComplete: (complete: boolean) => void; // Keep existing action
+  setIsLoading: (loading: boolean) => void;
+  setSplashComplete: (complete: boolean) => void;
 
   logout: () => void;
   setDriverStatus: (status: DriverStatus) => void;
-  setIsOnDuty: (isOnDuty: boolean) => void; // Keep existing action used by toggle
+  setIsOnDuty: (isOnDuty: boolean) => void;
   setDriverLocation: (location: { lat: number; lng: number }) => void;
 
   // Workflow Actions
@@ -59,10 +69,14 @@ interface AppState {
   completeOrder: () => void;
   rejectOrder: (orderId: string) => void;
   triggerNewOrder: () => void;
-  clearSummary: () => void; // Keep existing action
+  clearSummary: () => void;
 
-  // NEW: Preferences Actions
+  // Preferences Actions
   updatePreferences: (prefs: Partial<DriverPreferences>) => void;
+
+  // 3. Nouvelles Actions (from User Request + existing updatePreferences)
+  updatePreference: (key: keyof DriverPreferences, value: any) => void; // Keep simpler version for UI binding
+  updateDocumentStatus: (docId: string, status: DriverDocument['status']) => void;
 }
 
 // MOCK DATA
@@ -105,12 +119,20 @@ export const useAppStore = create<AppState>()(
       earnings: 0,
       lastCompletedOrder: null,
 
-      // Default Preferences
+      // Initialisation Mockée (Updated)
+      vehicle: { model: "Toyota Prius", plate: "AB-123-CD", color: "Gris Minéral" },
+      documents: [
+        { id: "1", name: "Permis de conduire", status: "verified", expiryDate: "2025-01-01" },
+        { id: "2", name: "Carte VTC", status: "verified", expiryDate: "2024-12-15" },
+        { id: "3", name: "Assurance RC Pro", status: "expired", expiryDate: "2023-11-20" },
+        { id: "4", name: "Kbis", status: "pending" },
+      ],
       preferences: {
         vehicleType: "car",
         navigationApp: "google_maps",
         soundEnabled: true,
-        darkMode: false
+        darkMode: false,
+        autoAccept: false,
       },
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
@@ -190,9 +212,18 @@ export const useAppStore = create<AppState>()(
         return { orders: [...state.orders, newOrder] };
       }),
 
-      // Update Action
+      // Update Action (Batch)
       updatePreferences: (prefs) => set((state) => ({
         preferences: { ...state.preferences, ...prefs }
+      })),
+
+      // Single Key Update Action
+      updatePreference: (key, value) => set((state) => ({
+        preferences: { ...state.preferences, [key]: value }
+      })),
+
+      updateDocumentStatus: (docId, status) => set((state) => ({
+        documents: state.documents.map(d => d.id === docId ? { ...d, status } : d)
       })),
     }),
     {
@@ -203,7 +234,9 @@ export const useAppStore = create<AppState>()(
         history: state.history,
         earnings: state.earnings,
         currentOrder: state.currentOrder,
-        preferences: state.preferences // Persistance des préférences
+        preferences: state.preferences,
+        documents: state.documents, // Add documents to persistence
+        vehicle: state.vehicle // Add vehicle to persistence
       }),
     }
   )

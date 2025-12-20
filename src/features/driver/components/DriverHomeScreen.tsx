@@ -7,17 +7,21 @@ import { DriverStatusToggle, DriverStatusBadge } from "./DriverStatusToggle";
 import { NewOrderModal } from "./NewOrderModal";
 import { ActiveOrderCard } from "./ActiveOrderCard";
 import { DriverMap } from "./DriverMap";
-import { DriverProfile } from "./DriverProfile"; // NEW Import
-import { DriverSettings } from "./DriverSettings"; // NEW Import
+// DriverProfile removed
+import { RideHistorySheet } from "./RideHistorySheet"; // NEW Import
+import { DriverSettings } from "./DriverSettings";
 import { useAppStore } from "@/stores/useAppStore";
 import { useDriverPosition } from "@/hooks/useDriverPosition";
 import { useDriverAlerts } from "@/hooks/useDriverAlerts";
+import { useIncomingOrderAlert } from "@/hooks/useIncomingOrderAlert"; // <-- Importez le hook
+import { useSidebar } from "@/components/ui/sidebar";
 import { RideSummary } from "./RideSummary";
 import { AnimatePresence } from "framer-motion";
 
 export const DriverHomeScreen = () => {
-  const [isProfileOpen, setProfileOpen] = useState(false);
-  const [isSettingsOpen, setSettingsOpen] = useState(false); // NEW State
+  const { toggleSidebar } = useSidebar();
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false); // <-- Nouvel état pour l'historique
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
 
   const {
     orders,
@@ -36,6 +40,7 @@ export const DriverHomeScreen = () => {
 
   const { simulateTravel } = useDriverPosition();
   useDriverAlerts();
+  useIncomingOrderAlert(); // ACTIVATION DU SYSTÈME D'ALERTE 🔔
 
   const stats = useMemo(() => {
     const count = history.length;
@@ -79,7 +84,7 @@ export const DriverHomeScreen = () => {
       {/* Header */}
       <header className="sticky top-0 z-30 glass border-b border-border/30">
         <div className="flex items-center justify-between p-4">
-          <Button variant="ghost" size="icon" onClick={() => setProfileOpen(true)}>
+          <Button variant="ghost" size="icon" onClick={toggleSidebar}>
             <Menu className="h-5 w-5" />
           </Button>
           <DriverStatusBadge />
@@ -145,46 +150,64 @@ export const DriverHomeScreen = () => {
         </motion.div>
 
         {/* Stats Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">Performance (Session)</h2>
-          <div className="grid grid-cols-3 gap-3">
-            {stats.map((stat) => (
-              <Card key={stat.label} className="glass border-border/30">
-                <CardContent className="p-3 text-center">
-                  <stat.icon className="h-4 w-4 mx-auto mb-1 text-accent" />
-                  <p className="text-xl font-bold">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </motion.div>
+        {/* Stats Grid - Hidden during active order */}
+        {!currentOrder && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className="flex items-center justify-between mb-3 px-1">
+              <h2 className="text-sm font-medium text-muted-foreground">Performance (Session)</h2>
+              <button
+                onClick={() => setIsHistoryOpen(true)}
+                className="text-xs font-bold text-accent"
+              >
+                Voir l'historique
+              </button>
+            </div>
 
-        {/* Accès Profil & Settings */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="glass border-border/30 cursor-pointer hover:bg-secondary/20 transition-colors" onClick={() => setProfileOpen(true)}>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                  <Car className="h-5 w-5 text-muted-foreground" />
+            <div className="grid grid-cols-3 gap-3">
+              {stats.map((stat) => (
+                <Card
+                  key={stat.label}
+                  className="glass border-border/30 active:scale-95 transition-transform cursor-pointer hover:bg-secondary/20"
+                  onClick={() => setIsHistoryOpen(true)}
+                >
+                  <CardContent className="p-3 text-center">
+                    <stat.icon className="h-4 w-4 mx-auto mb-1 text-accent" />
+                    <p className="text-xl font-bold">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Accès Profil & Settings - Hidden during active order */}
+        {!currentOrder && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="glass border-border/30 cursor-pointer hover:bg-secondary/20 transition-colors" onClick={toggleSidebar}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
+                    <Car className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Mon Profil & Véhicule</p>
+                    <p className="text-xs text-muted-foreground">Consulter l'historique</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium">Mon Profil & Véhicule</p>
-                  <p className="text-xs text-muted-foreground">Consulter l'historique</p>
-                </div>
-              </div>
-              <Button variant="ghost" size="sm">Ouvrir</Button>
-            </CardContent>
-          </Card>
-        </motion.div>
+                <Button variant="ghost" size="sm" onClick={toggleSidebar}>Modifier</Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
       </div>
 
       <NewOrderModal
@@ -208,7 +231,8 @@ export const DriverHomeScreen = () => {
       </AnimatePresence>
 
       {/* Sheets */}
-      <DriverProfile open={isProfileOpen} onOpenChange={setProfileOpen} />
+      {/* DriverProfile removed */}
+      <RideHistorySheet isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
       <DriverSettings open={isSettingsOpen} onOpenChange={setSettingsOpen} />
 
     </div>
