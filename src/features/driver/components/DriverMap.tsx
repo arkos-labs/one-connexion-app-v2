@@ -1,22 +1,24 @@
-import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useState } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Order } from "@/types";
+import { LocateFixed } from "lucide-react";
 
-// Icône Voiture Personnalisée (Rotative et Fluide)
+// --- CONFIGURATION API ---
+const LOCATIONIQ_KEY = "pk.cc49323fc6339e614aec809f78bc7db4";
+const TILE_URL = `https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`;
+
+// --- ASSETS GRAPHIQUES ---
+// Voiture (Emoji haute qualité ou SVG personnalisé)
 const carIcon = new L.DivIcon({
-    className: "bg-transparent", // Important pour ne pas avoir de carré blanc
-    html: `<div style="
-    font-size: 24px; 
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); 
-    transform-origin: center;
-  ">🚗</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15] // Centré
+    className: "bg-transparent",
+    html: `<div style="font-size: 32px; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.4)); transform: translateY(-5px);">🚖</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20] // Centré parfaitement
 });
 
-// Icônes Points A et B
+// Marqueurs standards Leaflet (corrigés pour React)
 const pickupIcon = new L.Icon({
     iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
     shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
@@ -35,64 +37,126 @@ const dropoffIcon = new L.Icon({
     shadowSize: [41, 41]
 });
 
-// Composant pour recentrer la carte (Caméra Fluide)
-const MapUpdater = ({ location, activeOrder }: { location: { lat: number; lng: number }, activeOrder: Order | null }) => {
+// --- SOUS-COMPOSANT : CONTRÔLEUR DE CAMÉRA ---
+// C'est lui qui décide si on bouge la carte ou non
+const MapController = ({
+    location,
+    activeOrder,
+    isInteracting,
+    onUserInteraction
+}: {
+    location: { lat: number; lng: number },
+    activeOrder: Order | null,
+    isInteracting: boolean,
+    onUserInteraction: () => void
+}) => {
     const map = useMap();
 
+    // Détecte quand l'utilisateur touche la carte
+    useMapEvents({
+        dragstart: () => {
+            onUserInteraction(); // Active le mode "Manuel"
+        },
+        zoomstart: () => {
+            onUserInteraction(); // Le zoom compte aussi comme une interaction
+        }
+    });
+
     useEffect(() => {
-        // Si une commande est active, on cadre large pour voir Départ + Arrivée
+        // Si l'utilisateur a pris le contrôle, on ne fait RIEN.
+        if (isInteracting) return;
+
         if (activeOrder) {
+            // SCÉNARIO MISSION : On cadre tout (Départ + Arrivée + Chauffeur)
             const bounds = L.latLngBounds(
                 [activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng],
                 [activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]
             );
-            bounds.extend([location.lat, location.lng]); // On inclut la voiture
-            map.flyToBounds(bounds, { padding: [50, 150], duration: 1.5 }); // Zoom fluide
+            bounds.extend([location.lat, location.lng]); // On s'assure que le chauffeur est visible
+
+            map.flyToBounds(bounds, {
+                padding: [50, 50],
+                duration: 1.5,
+                animate: true
+            });
         } else {
-            // Mode Libre : On suit la voiture de près
-            map.flyTo([location.lat, location.lng], 16, { duration: 1.5 });
+            // SCÉNARIO LIBRE : On suit la voiture de près (Zoom 16)
+            map.flyTo([location.lat, location.lng], 16, {
+                duration: 1.5,
+                animate: true
+            });
         }
-    }, [location, activeOrder, map]);
+    }, [location, activeOrder, isInteracting, map]);
 
     return null;
 };
 
+// --- COMPOSANT PRINCIPAL ---
 interface DriverMapProps {
     driverLocation: { lat: number; lng: number };
     activeOrder: Order | null;
 }
 
 export const DriverMap = ({ driverLocation, activeOrder }: DriverMapProps) => {
+    // État : Est-ce que l'utilisateur manipule la carte ?
+    const [isUserInteracting, setIsUserInteracting] = useState(false);
+
+    // Fonction pour recentrer manuellement
+    const handleRecenter = () => {
+        setIsUserInteracting(false); // Rend le contrôle au GPS
+    };
+
     return (
-        <MapContainer
-            center={[driverLocation.lat, driverLocation.lng]}
-            zoom={15}
-            style={{ height: "100%", width: "100%" }}
-            zoomControl={false} // On retire les boutons +/- pour le style "App Mobile"
-            attributionControl={false} // On retire le copyright pour le style "Clean"
-            className="z-0 outline-none" // Retire les bordures de focus
-        >
-            <TileLayer
-                // Fond de carte "Voyager" (Clair et Pro)
-                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            />
+        <div className="relative h-full w-full bg-gray-100">
+            <MapContainer
+                center={[driverLocation.lat, driverLocation.lng]}
+                zoom={15}
+                style={{ height: "100%", width: "100%" }}
+                zoomControl={false} // On cache le zoom par défaut pour un look mobile
+                attributionControl={false} // On retire le copyright par défaut (optionnel)
+                className="z-0 outline-none"
+            >
+                {/* 1. TUILES LOCATION IQ */}
+                <TileLayer
+                    url={TILE_URL}
+                    maxZoom={18}
+                    attribution='&copy; <a href="https://locationiq.com/?ref=maps">LocationIQ</a>'
+                />
 
-            {/* Voiture Chauffeur (Animée via CSS .leaflet-marker-icon) */}
-            <Marker position={[driverLocation.lat, driverLocation.lng]} icon={carIcon} />
+                {/* 2. MARQUEUR CHAUFFEUR */}
+                <Marker position={[driverLocation.lat, driverLocation.lng]} icon={carIcon} />
 
-            {/* Points de la mission */}
-            {activeOrder && (
-                <>
-                    <Marker position={[activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng]} icon={pickupIcon}>
-                        <Popup>Retrait: {activeOrder.pickupLocation.address}</Popup>
-                    </Marker>
-                    <Marker position={[activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]} icon={dropoffIcon}>
-                        <Popup>Livraison: {activeOrder.dropoffLocation.address}</Popup>
-                    </Marker>
-                </>
+                {/* 3. MARQUEURS MISSION */}
+                {activeOrder && (
+                    <>
+                        <Marker position={[activeOrder.pickupLocation.lat, activeOrder.pickupLocation.lng]} icon={pickupIcon}>
+                            <Popup className="font-semibold">Pickup: {activeOrder.pickupLocation.address}</Popup>
+                        </Marker>
+                        <Marker position={[activeOrder.dropoffLocation.lat, activeOrder.dropoffLocation.lng]} icon={dropoffIcon}>
+                            <Popup className="font-semibold">Dropoff: {activeOrder.dropoffLocation.address}</Popup>
+                        </Marker>
+                    </>
+                )}
+
+                {/* 4. LOGIQUE CAMÉRA */}
+                <MapController
+                    location={driverLocation}
+                    activeOrder={activeOrder}
+                    isInteracting={isUserInteracting}
+                    onUserInteraction={() => setIsUserInteracting(true)}
+                />
+            </MapContainer>
+
+            {/* 5. BOUTON RECENTRER (Apparaît seulement si nécessaire) */}
+            {isUserInteracting && (
+                <button
+                    onClick={handleRecenter}
+                    className="absolute bottom-8 right-6 z-[400] bg-black text-white px-4 py-3 rounded-full shadow-2xl flex items-center justify-center transition-all active:scale-95 animate-in fade-in slide-in-from-bottom-4 duration-300"
+                >
+                    <LocateFixed size={20} className="mr-2 animate-pulse" />
+                    <span className="font-bold text-sm">Recentrer</span>
+                </button>
             )}
-
-            <MapUpdater location={driverLocation} activeOrder={activeOrder} />
-        </MapContainer>
+        </div>
     );
 };
