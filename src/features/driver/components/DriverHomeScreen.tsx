@@ -1,18 +1,24 @@
-import { useMemo, useCallback } from "react"; // Optimisation
-import { motion, AnimatePresence } from "framer-motion";
-import { Menu, Bell, TrendingUp, Clock, Euro, Settings, PlayCircle, PlusCircle } from "lucide-react"; // Ajout PlusCircle
+import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
+import { Menu, Bell, TrendingUp, Clock, Euro, Settings, PlayCircle, PlusCircle, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DriverStatusToggle, DriverStatusBadge } from "./DriverStatusToggle";
 import { NewOrderModal } from "./NewOrderModal";
 import { ActiveOrderCard } from "./ActiveOrderCard";
 import { DriverMap } from "./DriverMap";
-import { RideSummary } from "./RideSummary";
+import { DriverProfile } from "./DriverProfile"; // NEW Import
+import { DriverSettings } from "./DriverSettings"; // NEW Import
 import { useAppStore } from "@/stores/useAppStore";
 import { useDriverPosition } from "@/hooks/useDriverPosition";
-import { useDriverAlerts } from "@/hooks/useDriverAlerts"; // NEW Hook
+import { useDriverAlerts } from "@/hooks/useDriverAlerts";
+import { RideSummary } from "./RideSummary";
+import { AnimatePresence } from "framer-motion";
 
 export const DriverHomeScreen = () => {
+  const [isProfileOpen, setProfileOpen] = useState(false);
+  const [isSettingsOpen, setSettingsOpen] = useState(false); // NEW State
+
   const {
     orders,
     currentOrder,
@@ -22,21 +28,17 @@ export const DriverHomeScreen = () => {
     rejectOrder,
     updateOrderStatus,
     completeOrder,
-    triggerNewOrder, // NEW Action
+    triggerNewOrder,
     isOnDuty,
     driverLocation,
     lastCompletedOrder
   } = useAppStore();
 
   const { simulateTravel } = useDriverPosition();
-
-  // Active le système d'alerte (Son + Toast)
   useDriverAlerts();
 
-  // --- KPI LOGIC (Temps Réel) ---
   const stats = useMemo(() => {
     const count = history.length;
-    // Estimation simple : 20 min par course
     const totalMinutes = count * 20;
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
@@ -49,8 +51,8 @@ export const DriverHomeScreen = () => {
     ];
   }, [history, earnings]);
 
-  const handleAcceptOrder = useCallback((orderId: string) => acceptOrder(orderId), [acceptOrder]);
-  const handleRejectOrder = useCallback((orderId: string) => rejectOrder(orderId), [rejectOrder]);
+  const handleAcceptOrder = (orderId: string) => acceptOrder(orderId);
+  const handleRejectOrder = (orderId: string) => rejectOrder(orderId);
 
   const handleOrderStatusChange = (orderId: string, status: 'in_progress' | 'completed') => {
     if (status === 'completed') {
@@ -77,14 +79,21 @@ export const DriverHomeScreen = () => {
       {/* Header */}
       <header className="sticky top-0 z-30 glass border-b border-border/30">
         <div className="flex items-center justify-between p-4">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={() => setProfileOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
           <DriverStatusBadge />
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            {isOnDuty && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-accent" />}
-          </Button>
+
+          <div className="flex items-center gap-1">
+            {/* Bouton Réglages Rapide */}
+            <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+              <Settings className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              {isOnDuty && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-accent" />}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -110,9 +119,7 @@ export const DriverHomeScreen = () => {
           </div>
 
           {/* Dev Tools Overlay */}
-          {/* Dev Tools Overlay */}
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-2">
-            {/* Simulation Trajet */}
             {currentOrder && (
               <Button
                 variant="destructive"
@@ -124,7 +131,6 @@ export const DriverHomeScreen = () => {
               </Button>
             )}
 
-            {/* Simulation Nouvelle Commande (Visible seulement si en ligne et libre) */}
             {isOnDuty && !currentOrder && (
               <Button
                 variant="default"
@@ -138,7 +144,7 @@ export const DriverHomeScreen = () => {
           </div>
         </motion.div>
 
-        {/* Stats Grid (Dynamic) */}
+        {/* Stats Grid */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -158,24 +164,24 @@ export const DriverHomeScreen = () => {
           </div>
         </motion.div>
 
-        {/* Settings Teaser */}
+        {/* Accès Profil & Settings */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="glass border-border/30">
+          <Card className="glass border-border/30 cursor-pointer hover:bg-secondary/20 transition-colors" onClick={() => setProfileOpen(true)}>
             <CardContent className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                  <Settings className="h-5 w-5 text-muted-foreground" />
+                  <Car className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Préférences</p>
-                  <p className="text-xs text-muted-foreground">Véhicule, Navigation</p>
+                  <p className="text-sm font-medium">Mon Profil & Véhicule</p>
+                  <p className="text-xs text-muted-foreground">Consulter l'historique</p>
                 </div>
               </div>
-              <Button variant="ghost" size="sm">Modifier</Button>
+              <Button variant="ghost" size="sm">Ouvrir</Button>
             </CardContent>
           </Card>
         </motion.div>
@@ -194,11 +200,17 @@ export const DriverHomeScreen = () => {
         />
       )}
 
+      {/* Ride Summary Overlay */}
       <AnimatePresence>
         {lastCompletedOrder && (
           <RideSummary order={lastCompletedOrder} />
         )}
       </AnimatePresence>
+
+      {/* Sheets */}
+      <DriverProfile open={isProfileOpen} onOpenChange={setProfileOpen} />
+      <DriverSettings open={isSettingsOpen} onOpenChange={setSettingsOpen} />
+
     </div>
   );
 };

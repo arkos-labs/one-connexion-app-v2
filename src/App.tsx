@@ -6,7 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import Index from "./pages/Index";
 import Driver from "./pages/Driver";
+import Login from "./pages/Login"; // NEW
 import NotFound from "./pages/NotFound";
+import { AuthGuard } from "./features/auth/components/AuthGuard"; // Import du Gardien
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,7 +24,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner 
+      <Sonner
         position="top-center"
         toastOptions={{
           style: {
@@ -36,8 +38,18 @@ const App = () => (
         <AnimatePresence mode="wait">
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/driver" element={<Driver />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Route Publique : Login */}
+            <Route path="/auth/login" element={<Login />} />
+
+            {/* Route Protégée : Driver */}
+            <Route
+              path="/driver"
+              element={
+                <AuthGuard requireAuth={true}>
+                  <Driver />
+                </AuthGuard>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AnimatePresence>

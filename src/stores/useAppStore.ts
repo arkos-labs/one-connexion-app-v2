@@ -13,33 +13,44 @@ interface User {
   avatarUrl?: string;
 }
 
+// NEW: Types pour les préférences
+export interface DriverPreferences {
+  vehicleType: "car" | "bike" | "scooter";
+  navigationApp: "waze" | "google_maps" | "apple_maps";
+  soundEnabled: boolean;
+  darkMode: boolean;
+}
+
 interface AppState {
   // Auth
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isSplashComplete: boolean;
+  isSplashComplete: boolean; // Keep existing state
 
   // Driver State
   driverStatus: DriverStatus;
   isOnDuty: boolean;
   driverLocation: { lat: number; lng: number };
 
-  // Data State (Financial & History)
+  // Data State
   orders: Order[];
   currentOrder: Order | null;
   history: Order[];
   earnings: number;
-  lastCompletedOrder: Order | null;
+  lastCompletedOrder: Order | null; // Keep existing state
+
+  // NEW: Preferences State
+  preferences: DriverPreferences;
 
   // Actions
   setUser: (user: User | null) => void;
-  setIsLoading: (loading: boolean) => void;
-  setSplashComplete: (complete: boolean) => void;
+  setIsLoading: (loading: boolean) => void; // Keep existing action
+  setSplashComplete: (complete: boolean) => void; // Keep existing action
 
   logout: () => void;
   setDriverStatus: (status: DriverStatus) => void;
-  setIsOnDuty: (isOnDuty: boolean) => void; // RESTORED
+  setIsOnDuty: (isOnDuty: boolean) => void; // Keep existing action used by toggle
   setDriverLocation: (location: { lat: number; lng: number }) => void;
 
   // Workflow Actions
@@ -47,8 +58,11 @@ interface AppState {
   updateOrderStatus: (status: Order['status']) => void;
   completeOrder: () => void;
   rejectOrder: (orderId: string) => void;
-  triggerNewOrder: () => void; // NEW: Simulation
-  clearSummary: () => void;
+  triggerNewOrder: () => void;
+  clearSummary: () => void; // Keep existing action
+
+  // NEW: Preferences Actions
+  updatePreferences: (prefs: Partial<DriverPreferences>) => void;
 }
 
 // MOCK DATA
@@ -76,10 +90,9 @@ const MOCK_ORDERS: Order[] = [
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      // Initial State
       user: null,
       isAuthenticated: false,
-      isLoading: true,
+      isLoading: false,
       isSplashComplete: false,
 
       driverStatus: "offline",
@@ -92,7 +105,14 @@ export const useAppStore = create<AppState>()(
       earnings: 0,
       lastCompletedOrder: null,
 
-      // Actions
+      // Default Preferences
+      preferences: {
+        vehicleType: "car",
+        navigationApp: "google_maps",
+        soundEnabled: true,
+        darkMode: false
+      },
+
       setUser: (user) => set({ user, isAuthenticated: !!user }),
       setIsLoading: (isLoading) => set({ isLoading }),
       setSplashComplete: (isSplashComplete) => set({ isSplashComplete }),
@@ -104,17 +124,14 @@ export const useAppStore = create<AppState>()(
         isOnDuty: false,
         history: [],
         earnings: 0,
-        currentOrder: null,
+        currentOrder: null
       }),
 
       setDriverStatus: (status) => set({ driverStatus: status, isOnDuty: status === 'online' }),
-
-      // RESTORED FUNCTION
       setIsOnDuty: (isOnDuty) => set({
         isOnDuty,
         driverStatus: isOnDuty ? "online" : "offline"
       }),
-
       setDriverLocation: (loc) => set({ driverLocation: loc }),
 
       acceptOrder: (orderId) => set((state) => {
@@ -155,10 +172,8 @@ export const useAppStore = create<AppState>()(
         orders: state.orders.filter(o => o.id !== orderId)
       })),
 
-      // NEW: Générateur de fausses commandes pour le test
       triggerNewOrder: () => set((state) => {
         const id = Math.random().toString(36).substr(2, 9);
-        // Random offset from center Paris
         const lat = 48.8566 + (Math.random() - 0.5) * 0.05;
         const lng = 2.3522 + (Math.random() - 0.5) * 0.05;
 
@@ -173,7 +188,12 @@ export const useAppStore = create<AppState>()(
         };
 
         return { orders: [...state.orders, newOrder] };
-      })
+      }),
+
+      // Update Action
+      updatePreferences: (prefs) => set((state) => ({
+        preferences: { ...state.preferences, ...prefs }
+      })),
     }),
     {
       name: "one-connexion-store-v2",
@@ -182,7 +202,8 @@ export const useAppStore = create<AppState>()(
         isAuthenticated: state.isAuthenticated,
         history: state.history,
         earnings: state.earnings,
-        currentOrder: state.currentOrder
+        currentOrder: state.currentOrder,
+        preferences: state.preferences // Persistance des préférences
       }),
     }
   )
