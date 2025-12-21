@@ -47,59 +47,52 @@ export const createOrderSlice: StateCreator<
 
         const subscription = orderService.subscribeToOrders((order) => {
             const state = get();
-
-            // 1. Is this order relevant to us? (Assigned to us OR Unassigned pool)
             const isForMe = order.assignedDriverId === user.id;
             const isUnassigned = !order.assignedDriverId;
 
-            // If assigned to someone else, remove it from our list if present
-            if (!isForMe && !isUnassigned) {
-                if (state.orders.some(o => o.id === order.id)) {
-                    set({ orders: state.orders.filter(o => o.id !== order.id) });
-                }
-                return;
-            }
-
-            // 2. Handle Active Order Updates (accepted/arrived_pickup/in_progress/completed)
-            // If I am the assigned driver, these updates affect my currentOrder
-            const activeStatuses = ['accepted', 'arrived_pickup', 'in_progress', 'completed'];
+            // --- 1. GESTION DE LA MISSION ACTIVE ---
+            const activeStatuses = ['accepted', 'arrived_pickup', 'in_progress'];
             if (isForMe && activeStatuses.includes(order.status)) {
-                // Ensure it's REMOVED from the pending offers list immediately
-                set(prev => ({ orders: prev.orders.filter(o => o.id !== order.id) }));
+                console.log(`🚀 [OrderSlice] Mise à jour mission active: ${order.id} (${order.status})`);
+                set(prev => ({ 
+                    currentOrder: order,
+                    driverStatus: 'busy',
+                    // SÉCURITÉ : On retire systématiquement de la liste des offres
+                    orders: prev.orders.filter(o => o.id !== order.id) 
+                }));
+                return;
+            }
 
-                if (state.currentOrder?.id === order.id) {
-                    set({ currentOrder: order });
-                } else if (!state.currentOrder && (order.status === 'accepted' || order.status === 'arrived_pickup')) {
-                    // Case: Accepted on another device or recovery after refresh
-                    set({ currentOrder: order, driverStatus: 'busy' });
+            // --- 2. GESTION DES OFFRES (Modale d'acceptation) ---
+            if (order.status === 'pending') {
+                // Si l'offre nous concerne (pool public ou assignation directe)
+                if (isUnassigned || isForMe) {
+                    // Mais seulement si on n'est pas déjà sur cette mission comme mission active
+                    if (state.currentOrder?.id === order.id) {
+                        console.log(`ℹ️ [OrderSlice] Ignoré: L'offre ${order.id} est déjà notre mission active`);
+                        return;
+                    }
+
+                    set((prev) => {
+                        const exists = prev.orders.some(o => o.id === order.id);
+                        if (exists) {
+                            console.log(`🔄 [OrderSlice] Mise à jour offre: ${order.id}`);
+                            return { orders: prev.orders.map(o => o.id === order.id ? order : o) };
+                        } else {
+                            console.log(`📥 [OrderSlice] Nouvelle offre reçue: ${order.id}`);
+                            return { orders: [...prev.orders, order] };
+                        }
+                    });
+                } else {
+                    // Assigné à quelqu'un d'autre -> On retire de nos offres
+                    set(prev => ({ orders: prev.orders.filter(o => o.id !== order.id) }));
                 }
                 return;
             }
 
-            // 3. Handle Pending Offers (Assigned or Pool)
-            // Note: 'assigned' status in DB is mapped to 'pending' in App by mapSupabaseToOrder
-            if (order.status === 'pending') {
-                set((prev) => {
-                    const exists = prev.orders.some(o => o.id === order.id);
-                    if (exists) {
-                        // UPDATE existing order (e.g. details changed, or status changed from pool to assigned)
-                        console.log(`🔄 [OrderSlice] Mise à jour commande existante ${order.id}`);
-                        return {
-                            orders: prev.orders.map(o => o.id === order.id ? order : o)
-                        };
-                    } else {
-                        // INSERT new order
-                        console.log(`📥 [OrderSlice] Ajout nouvelle commande ${order.id}`);
-                        return {
-                            orders: [...prev.orders, order]
-                        };
-                    }
-                });
-            }
-
-            // 4. Handle Cancellations
-            if (order.status === 'cancelled') {
-                console.log(`🚫 [OrderSlice] Commande annulée ${order.id}`);
+            // --- 3. GESTION DES ANNULATIONS / FINALISATIONS ---
+            if (order.status === 'completed' || order.status === 'cancelled') {
+                console.log(`🏁 [OrderSlice] Commande terminée/annulée: ${order.id}`);
                 set(prev => ({
                     orders: prev.orders.filter(o => o.id !== order.id),
                     currentOrder: prev.currentOrder?.id === order.id ? null : prev.currentOrder,

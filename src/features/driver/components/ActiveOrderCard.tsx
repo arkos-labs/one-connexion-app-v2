@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Navigation, MapPin, User, Clock, CheckCircle, XCircle, MoreVertical, MessageSquare, Headset, ChevronDown, ChevronUp, Lock, Target } from "lucide-react";
+import { Phone, Navigation, MapPin, User, Clock, CheckCircle, XCircle, MoreVertical, MessageSquare, Headset, ChevronDown, ChevronUp, Lock, Target } from "lucide-round";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

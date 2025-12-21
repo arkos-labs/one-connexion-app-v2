@@ -36,12 +36,11 @@ export const DriverHomeScreen = () => {
 
   const { simulateTravel } = useDriverPosition();
 
-  // Initialization and Subscription
+  // Initialization handled by AuthGuard at high level to maintain consistency
   useEffect(() => {
-    initializeOrders();
-    const unsubscribe = subscribeToNewOrders();
-    return () => unsubscribe();
-  }, [initializeOrders, subscribeToNewOrders]);
+    // Current state updates are enough, no need to re-initialize here
+    console.log("📍 [DriverHomeScreen] Mounted, using global store state");
+  }, []);
 
   // 🔥 HOOKS DE SYNCHRONISATION EN TEMPS RÉEL
   // Synchronise la position du chauffeur toutes les 10s pendant une course
@@ -56,8 +55,9 @@ export const DriverHomeScreen = () => {
 
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Find any pending order
-  const pendingOrder = orders.find(o => o.status === 'pending');
+  // On ne cherche des nouvelles commandes que si on n'est pas déjà en mission
+  // Et on filtre strictement pour ne pas réafficher la mission en cours comme une nouvelle offre
+  const pendingOrder = !currentOrder ? orders.find(o => o.status === 'pending') : null;
 
 
 
