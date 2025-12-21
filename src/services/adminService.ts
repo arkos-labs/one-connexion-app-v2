@@ -43,7 +43,7 @@ export const adminService = {
         const { data, error } = await supabase
             .from('drivers')
             .select(`
-                user_id,
+                id,
                 email,
                 first_name,
                 last_name,
@@ -58,5 +58,30 @@ export const adminService = {
 
         if (error) throw error;
         return data;
+    },
+
+    /**
+     * Get all orders that are not delivered or cancelled
+     */
+    async fetchAllActiveOrders() {
+        // Fetch orders and join with drivers to get the name of the assigned chauffeur
+        const { data, error } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                drivers(id, first_name, last_name, email)
+            `)
+            .not('status', 'in', '("delivered","cancelled")')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        
+        // Flatten the driver data for easier UI consumption if needed
+        return data.map((order: any) => ({
+            ...order,
+            driver_first_name: order.drivers?.first_name,
+            driver_last_name: order.drivers?.last_name,
+            driver_email: order.drivers?.email
+        }));
     }
 };
