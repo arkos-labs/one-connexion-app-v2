@@ -83,8 +83,8 @@ export const DashboardHome = () => {
         switch (status) {
             case 'pending_acceptance': return 'En attente';
             case 'driver_accepted': return 'Accepté';
-            case 'arrived_pickup': return 'Au Retrait';
-            case 'in_progress': return 'En cours';
+            case 'arrived_pickup': return 'Arrivé au retrait';
+            case 'in_progress': return 'Colis Récupéré';
             case 'delivered': return 'Livré';
             case 'assigned': return 'Assigné';
             default: return status;
@@ -261,6 +261,17 @@ export const DashboardHome = () => {
                                                     <p className="text-[11px] font-medium truncate">{order.delivery_address || order.dropoff_address}</p>
                                                 </div>
                                             </div>
+
+                                            {order.status === 'in_progress' && order.picked_up_at && (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <div className="h-4 w-4 bg-purple-500/10 text-purple-500 rounded flex items-center justify-center shrink-0">
+                                                        <Clock className="h-2.5 w-2.5" />
+                                                    </div>
+                                                    <span className="text-[10px] font-bold text-purple-500 uppercase tracking-tighter">
+                                                        Récupéré à {format(new Date(order.picked_up_at), "HH:mm")}
+                                                    </span>
+                                                </div>
+                                            )}
 
                                             {order.driver_id && (
                                                 <div className="mt-3 pt-3 border-t border-border/5 flex items-center justify-between">

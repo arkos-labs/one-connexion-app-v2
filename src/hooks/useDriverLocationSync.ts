@@ -9,48 +9,61 @@ import { orderService } from '@/services/orderService';
 export const useDriverLocationSync = () => {
     const { currentOrder, driverLocation, isOnDuty } = useAppStore();
     const lastUpdateRef = useRef<number>(0);
-    const UPDATE_INTERVAL = 3000; // Mise à jour toutes les 3 secondes (Temps réel fluide)
+    const locationRef = useRef(driverLocation);
+    const orderRef = useRef(currentOrder);
+    const UPDATE_INTERVAL = 3000; // Synchronisation toutes les 3 secondes
+
+    // Update refs whenever the store values change
+    useEffect(() => {
+        locationRef.current = driverLocation;
+        orderRef.current = currentOrder;
+    }, [driverLocation, currentOrder]);
 
     useEffect(() => {
-        // Ne synchroniser que si le chauffeur est en mission
-        if (!currentOrder || !isOnDuty) {
-            return;
-        }
+        // Ne démarrer le cycle que si le chauffeur est en mission
+        if (!isOnDuty) return;
 
         const syncLocation = async () => {
             const now = Date.now();
+            const activeOrder = orderRef.current;
+            const currentLoc = locationRef.current;
 
-            // Éviter les mises à jour trop fréquentes
-            if (now - lastUpdateRef.current < UPDATE_INTERVAL) {
+            if (!activeOrder) return;
+
+            // Éviter les mises à jour trop fréquentes si l'intervalle est déjà en cours
+            if (now - lastUpdateRef.current < UPDATE_INTERVAL - 500) {
                 return;
             }
 
             try {
-                console.log('📍 [LocationSync] Synchronisation position chauffeur...');
+                // On met à jour la table des ordres pour l'admin (driver_current_lat/lng)
+                // On utilise le statut actuel mappé vers le format Supabase
+                let sbStatus = activeOrder.status as string;
+                if (activeOrder.status === 'accepted') sbStatus = 'driver_accepted';
+                if (activeOrder.status === 'completed') sbStatus = 'delivered';
 
                 await orderService.updateStatusWithLocation(
-                    currentOrder.id,
-                    currentOrder.status === 'accepted' ? 'driver_accepted' : 'in_progress',
-                    driverLocation,
+                    activeOrder.id,
+                    sbStatus,
+                    currentLoc,
                     {
-                        // Pas de changement de statut, juste mise à jour de position
                         last_location_update: new Date().toISOString()
                     }
                 );
 
                 lastUpdateRef.current = now;
-                console.log('✅ [LocationSync] Position synchronisée avec succès');
+                console.log('✅ [LocationSync] Position synchronisée pour admin');
             } catch (error) {
                 console.error('❌ [LocationSync] Erreur synchronisation:', error);
             }
         };
 
-        // Synchroniser immédiatement puis toutes les 10 secondes
-        syncLocation();
         const interval = setInterval(syncLocation, UPDATE_INTERVAL);
+        // Premier déclenchement immédiat
+        syncLocation();
 
         return () => clearInterval(interval);
-    }, [currentOrder, driverLocation, isOnDuty]);
+    }, [isOnDuty]); // Dépend seulement de isOnDuty pour un cycle stable
 };
 
 /**

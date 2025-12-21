@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import L from "leaflet";
+import { Package } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 // Configuration LocationIQ
@@ -74,12 +75,20 @@ export const DispatchMap = ({ drivers, orders }: DispatchMapProps) => {
                 <TileLayer url={TILE_URL} />
 
                 {/* 1. Marqueurs Chauffeurs */}
-                {drivers.map((driver) => (
-                    driver.current_lat && (
+                {drivers.map((driver) => {
+                    const activeMission = orders.find(o => o.driver_id === driver.id && o.status !== 'delivered');
+                    
+                    let markerColor = driver.is_online ? '#22c55e' : '#94a3b8'; // Vert / Gris par défaut
+                    if (activeMission) {
+                        if (activeMission.status === 'in_progress') markerColor = '#a855f7'; // Violet pour Colis à bord
+                        else markerColor = '#3b82f6'; // Bleu pour Accepté / En route
+                    }
+
+                    return driver.current_lat && (
                         <Marker
                             key={`driver-${driver.id}`}
                             position={[driver.current_lat, driver.current_lng]}
-                            icon={driverIconBase(driver.is_online ? '#22c55e' : '#94a3b8')}
+                            icon={driverIconBase(markerColor)}
                         >
                             <Popup>
                                 <div className="p-2 min-w-[150px]">
@@ -87,7 +96,21 @@ export const DispatchMap = ({ drivers, orders }: DispatchMapProps) => {
                                         <div className={`h-2 w-2 rounded-full ${driver.is_online ? 'bg-green-500' : 'bg-gray-400'}`} />
                                         <p className="font-bold text-sm">{driver.first_name} {driver.last_name}</p>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">Statut</p>
+                                    
+                                    {activeMission && (
+                                        <div className="mb-2 p-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-md">
+                                            <p className="text-[9px] font-black uppercase text-muted-foreground leading-none mb-1">Mission Active</p>
+                                            <p className="text-[10px] font-bold text-primary truncate">#{activeMission.id.slice(0,8)}</p>
+                                            {activeMission.status === 'in_progress' && (
+                                                <div className="flex items-center gap-1 mt-1 text-[9px] font-black text-purple-600 uppercase">
+                                                    <Package className="h-3 w-3" />
+                                                    Colis à bord
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">Statut Flotte</p>
                                     <p className="text-xs font-bold text-primary">{driver.availability_status?.toUpperCase() || 'DISPONIBLE'}</p>
                                     <div className="mt-2 text-[9px] text-muted-foreground italic">
                                         Mis à jour: {driver.last_location_update ? new Date(driver.last_location_update).toLocaleTimeString() : 'N/A'}
@@ -95,8 +118,8 @@ export const DispatchMap = ({ drivers, orders }: DispatchMapProps) => {
                                 </div>
                             </Popup>
                         </Marker>
-                    )
-                ))}
+                    );
+                })}
 
                 {/* 2. Commandes Actives & Trajets */}
                 {orders.map((order) => {
