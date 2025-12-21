@@ -60,16 +60,18 @@ export const createOrderSlice: StateCreator<
                 return;
             }
 
-            // 2. Handle Active Order Updates (accepted/in_progress/completed)
+            // 2. Handle Active Order Updates (accepted/arrived_pickup/in_progress/completed)
             // If I am the assigned driver, these updates affect my currentOrder
-            if (isForMe && ['accepted', 'in_progress', 'completed'].includes(order.status)) {
+            const activeStatuses = ['accepted', 'arrived_pickup', 'in_progress', 'completed'];
+            if (isForMe && activeStatuses.includes(order.status)) {
+                // Ensure it's REMOVED from the pending offers list immediately
+                set(prev => ({ orders: prev.orders.filter(o => o.id !== order.id) }));
+
                 if (state.currentOrder?.id === order.id) {
                     set({ currentOrder: order });
-                    // Ensure it's not in the pending list
-                    set(prev => ({ orders: prev.orders.filter(o => o.id !== order.id) }));
-                } else if (!state.currentOrder && order.status === 'accepted') {
-                    // Case: Accepted on another device or missed state transition
-                    set({ currentOrder: order, driverStatus: 'busy', orders: state.orders.filter(o => o.id !== order.id) });
+                } else if (!state.currentOrder && (order.status === 'accepted' || order.status === 'arrived_pickup')) {
+                    // Case: Accepted on another device or recovery after refresh
+                    set({ currentOrder: order, driverStatus: 'busy' });
                 }
                 return;
             }
