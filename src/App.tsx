@@ -14,9 +14,15 @@ import NotFound from "./pages/NotFound";
 import { RideHistorySheet } from "./features/driver/components/RideHistorySheet"; // Pour l'historique (Note: c'est un sheet, on peut faire une page wrapper si besoin)
 import { HistoryPage } from "./features/driver/pages/HistoryPage"; // Page Historique
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import { AuthGuard } from "./features/auth/components/AuthGuard";
 import { SettingsPage } from "./features/driver/pages/SettingsPage";
 import { SupportPage } from "./features/driver/pages/SupportPage";
+import { DashboardHome } from "./features/dashboard/components/DashboardHome";
+
+// 🧪 Import des utilitaires de test (disponibles dans window.testOrders)
+import "./utils/testOrders";
+
 
 const queryClient = new QueryClient();
 
@@ -41,8 +47,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* 1. Route Publique : Login */}
+          {/* 1. Route Publique : Login & Register */}
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           {/* 2. Routes Protégées (Tout le reste) */}
           <Route
@@ -72,6 +79,7 @@ const App = () => (
             {/* --- AUTRES ROUTES --- */}
             <Route path="settings" element={<SettingsPage />} />
             <Route path="support" element={<SupportPage />} />
+            <Route path="dispatch" element={<DashboardHome />} />
           </Route>
 
           {/* Route 404 */}

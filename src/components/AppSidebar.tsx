@@ -4,7 +4,9 @@ import {
     Settings,
     HelpCircle,
     LogOut,
-    Star
+    Star,
+    Wallet,
+    Car
 } from "lucide-react";
 import {
     Sidebar,
@@ -26,6 +28,8 @@ import { toast } from "@/hooks/use-toast";
 // Items réduits : Historique, Documents, Préférences, Aide
 const MENU_ITEMS = [
     { title: "Historique", url: "/driver/history", icon: History },
+    { title: "Mes Revenus", url: "/driver/earnings", icon: Wallet },
+    { title: "Mon Véhicule", url: "/driver/vehicle", icon: Car },
     { title: "Documents", url: "/driver/documents", icon: FileText },
     { title: "Préférences", url: "/settings", icon: Settings },
     { title: "Aide & Support", url: "/support", icon: HelpCircle },

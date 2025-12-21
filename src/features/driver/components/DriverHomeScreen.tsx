@@ -14,6 +14,8 @@ import { NewOrderModal } from "./NewOrderModal";
 import { useTrafficSimulation } from "@/hooks/useTrafficSimulation";
 import { useIncomingOrderAlert } from "@/hooks/useIncomingOrderAlert";
 import { useDriverPosition } from "@/hooks/useDriverPosition";
+import { useDriverLocationSync, useOrderProgressNotifications } from "@/hooks/useDriverLocationSync";
+
 
 export const DriverHomeScreen = () => {
   const currentOrder = useAppStore((state) => state.currentOrder);
@@ -29,11 +31,27 @@ export const DriverHomeScreen = () => {
   const rejectOrder = useAppStore((state) => state.rejectOrder);
   const triggerNewOrder = useAppStore((state) => state.triggerNewOrder);
   const clearSummary = useAppStore((state) => state.clearSummary);
+  const initializeOrders = useAppStore((state) => state.initializeOrders);
+  const subscribeToNewOrders = useAppStore((state) => state.subscribeToNewOrders);
 
   const { simulateTravel } = useDriverPosition();
 
+  // Initialization and Subscription
+  useEffect(() => {
+    initializeOrders();
+    const unsubscribe = subscribeToNewOrders();
+    return () => unsubscribe();
+  }, [initializeOrders, subscribeToNewOrders]);
+
+  // 🔥 HOOKS DE SYNCHRONISATION EN TEMPS RÉEL
+  // Synchronise la position du chauffeur toutes les 10s pendant une course
+  useDriverLocationSync();
+
+  // Affiche des notifications de progression au chauffeur
+  useOrderProgressNotifications();
+
   // Hooks simulation et alertes
-  useTrafficSimulation();
+  // useTrafficSimulation();
   useIncomingOrderAlert();
 
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -55,7 +73,7 @@ export const DriverHomeScreen = () => {
 
       {/* 1. ZONE CARTE (Prend tout l'espace restant) */}
       <div className="flex-1 relative w-full min-h-0">
-        <DriverMap activeOrder={currentOrder} driverLocation={driverLocation} />
+        <DriverMap activeOrder={currentOrder || pendingOrder || null} driverLocation={driverLocation} />
 
         {/* Boutons flottants sur la carte (GPS, Recentrer...) */}
         <div className="absolute right-4 bottom-4 flex flex-col gap-2 pointer-events-auto z-[400]">
@@ -158,8 +176,17 @@ export const DriverHomeScreen = () => {
 
       {/* MODALES */}
 
-      {/* 1. Nouvelle Commande (Pending) */}
-      <NewOrderModal />
+      {/* 1. Modale de nouvelle commande - IMPOSÉE ICI POUR ÊTRE SÛR QU'ELLE S'AFFICHE */}
+      <AnimatePresence>
+        {pendingOrder && (
+          <NewOrderModal
+            order={pendingOrder}
+            onAccept={() => acceptOrder(pendingOrder.id)}
+            onReject={() => rejectOrder(pendingOrder.id)}
+
+          />
+        )}
+      </AnimatePresence>
 
       {/* 2. Résumé de fin de course */}
       <AnimatePresence>

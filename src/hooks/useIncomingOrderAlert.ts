@@ -1,11 +1,16 @@
 import { useEffect, useRef } from "react";
 import { useAppStore } from "@/stores/useAppStore";
+import { Haptics, ImpactStyle } from "@capacitor/haptics";
+import { Capacitor } from "@capacitor/core";
 
 const RINGTONE_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export const useIncomingOrderAlert = () => {
-    const { orders, driverStatus } = useAppStore();
-    const pendingOrder = orders.find(o => o.status === 'pending');
+    const { orders, driverStatus, user } = useAppStore();
+    const pendingOrder = orders.find(o =>
+        o.status === 'pending' ||
+        (o.status === 'assigned' && o.assignedDriverId === user?.id)
+    );
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const vibrationInterval = useRef<NodeJS.Timeout | null>(null);
@@ -36,19 +41,31 @@ export const useIncomingOrderAlert = () => {
         if (playPromise !== undefined) {
             playPromise.catch(error => {
                 console.warn("Autoplay Audio bloqué par le navigateur :", error);
-                // Fallback : On force une vibration plus intense si le son échoue
-                if (navigator.vibrate) navigator.vibrate([500, 100, 500, 100, 500]);
+
+                // Fallback Haptique Mobile
+                if (Capacitor.isNativePlatform()) {
+                    Haptics.vibrate();
+                } else if (navigator.vibrate) {
+                    navigator.vibrate([500, 100, 500, 100, 500]);
+                }
             });
         }
 
-        // 3. Vibration Standard
-        if (navigator.vibrate) {
+        // 3. Vibration / Haptique Standard
+        triggerHaptic();
+        if (!vibrationInterval.current) {
+            vibrationInterval.current = setInterval(() => {
+                triggerHaptic();
+            }, 1500);
+        }
+    };
+
+    const triggerHaptic = async () => {
+        if (Capacitor.isNativePlatform()) {
+            await Haptics.impact({ style: ImpactStyle.Heavy });
+            setTimeout(() => Haptics.impact({ style: ImpactStyle.Heavy }), 200);
+        } else if (navigator.vibrate) {
             navigator.vibrate([500, 200, 500]);
-            if (!vibrationInterval.current) {
-                vibrationInterval.current = setInterval(() => {
-                    navigator.vibrate([500, 200, 500]);
-                }, 1500);
-            }
         }
     };
 
@@ -61,6 +78,8 @@ export const useIncomingOrderAlert = () => {
             clearInterval(vibrationInterval.current);
             vibrationInterval.current = null;
         }
-        if (navigator.vibrate) navigator.vibrate(0);
+        if (!Capacitor.isNativePlatform() && navigator.vibrate) {
+            navigator.vibrate(0);
+        }
     };
 };

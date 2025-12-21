@@ -12,10 +12,20 @@ export interface Order {
   };
   clientName: string;
   price: number;
+  priceInCents: number; // For consistency with store
   distance: string;
-  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'assigned' | 'accepted' | 'arrived_pickup' | 'in_progress' | 'completed' | 'cancelled';
   assignedDriverId?: string;
-  completedAt?: string; // NEW: Timestamp de fin de course
+  createdAt: string; // ISO string
+  completedAt?: string;
+  paymentMethod?: 'card' | 'cash';
+  pickupAddress: string; // Flat field for easier access in lists
+  dropoffAddress: string; // Flat field for easier access in lists
+  proof?: {
+    type: 'signature' | 'photo';
+    dataUrl: string;
+    timestamp: string;
+  };
 }
 
 export interface DriverProfile {

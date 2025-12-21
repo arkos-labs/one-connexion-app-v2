@@ -29,7 +29,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
 interface ActiveOrderCardProps {
   order: Order;
-  onStatusChange: (orderId: string, status: 'in_progress' | 'completed') => void;
+  onStatusChange: (orderId: string, status: 'arrived_pickup' | 'in_progress' | 'completed') => void;
   onChatOpen?: () => void;
 }
 
@@ -43,8 +43,12 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const isPickupPhace = order.status === 'accepted';
-  const targetLocation = isPickupPhace ? order.pickupLocation : order.dropoffLocation;
+  // Phases
+  const isEnRoutePickup = order.status === 'accepted';
+  const isArrivedPickup = order.status === 'arrived_pickup';
+  const isPickupPhase = isEnRoutePickup || isArrivedPickup;
+
+  const targetLocation = isPickupPhase ? order.pickupLocation : order.dropoffLocation;
 
   // Calcul de distance pour validation (Seuil 200m)
   const distanceToTarget = useMemo(() => {
@@ -56,30 +60,48 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
 
   const isNearby = forceNearby || distanceToTarget < 200; // 200 mètres OU mode forcé
 
-  const statusConfig = isPickupPhace ? {
-    title: "En route vers le retrait",
-    color: "text-blue-500",
-    thumbColor: "bg-blue-600",
-    bgColor: "bg-blue-500/10",
-    nextAction: "Confirmer le Retrait",
-    nextStatus: 'in_progress' as const
-  } : {
-    title: "En route vers la livraison",
-    color: "text-green-500",
-    thumbColor: "bg-green-600",
-    bgColor: "bg-green-500/10",
-    nextAction: "Terminer la Course",
-    nextStatus: 'completed' as const
-  };
+  // Configuration dynamique des étapes
+  let statusConfig;
+
+  if (isEnRoutePickup) {
+    statusConfig = {
+      title: "En route vers le retrait",
+      color: "text-blue-500",
+      thumbColor: "bg-blue-600",
+      bgColor: "bg-blue-500/10",
+      nextAction: "Je suis arrivé",
+      nextStatus: 'arrived_pickup' as const
+    };
+  } else if (isArrivedPickup) {
+    statusConfig = {
+      title: "Sur place (Retrait)",
+      color: "text-orange-500",
+      thumbColor: "bg-orange-600",
+      bgColor: "bg-orange-500/10",
+      nextAction: "Confirmer la Prise en charge",
+      nextStatus: 'in_progress' as const
+    };
+  } else {
+    statusConfig = {
+      title: "En route vers la livraison",
+      color: "text-green-500",
+      thumbColor: "bg-green-600",
+      bgColor: "bg-green-500/10",
+      nextAction: "Terminer la Course",
+      nextStatus: 'completed' as const
+    };
+  }
 
   const handleProofConfirmed = (proofType: 'signature' | 'photo', proofData: string) => {
-    console.log("Preuve capturée :", proofType, proofData); // Ici, on enverrait ça au backend
+    // Collect proof data
+    const proof = {
+      type: proofType,
+      dataUrl: proofData,
+      timestamp: new Date().toISOString()
+    };
 
-    // TODO: Envoyer la preuve au backend
-    // await supabase.from('order_proofs').insert({ order_id: order.id, proof_type: proofType, proof_data: proofData })
-
-    // C'est SEULEMENT MAINTENANT qu'on termine vraiment la course
-    completeOrder();
+    // Terminer la course avec la preuve
+    completeOrder(proof);
   };
 
   const handleSlideEnd = (info: any) => {
@@ -161,10 +183,10 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
             <div className="bg-secondary/30 rounded-lg p-2.5 flex items-center justify-between gap-3 border border-border/50">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  {isPickupPhace ? "Lieu de prise en charge" : "Destination"}
+                  {isPickupPhase ? "Lieu de prise en charge" : "Destination"}
                 </p>
                 <div className="flex items-start gap-1.5">
-                  <MapPin className={cn("h-4 w-4 mt-0.5 shrink-0", isPickupPhace ? "text-blue-500" : "text-green-500")} />
+                  <MapPin className={cn("h-4 w-4 mt-0.5 shrink-0", isPickupPhase ? "text-blue-500" : "text-green-500")} />
                   <p className="font-medium text-sm leading-tight truncate">
                     {targetLocation.address}
                   </p>

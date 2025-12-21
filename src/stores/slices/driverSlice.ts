@@ -1,5 +1,6 @@
 import { StateCreator } from "zustand";
 import { AppStore, DriverSlice } from "../types";
+import { driverService } from "../../services/driverService";
 
 /**
  * DriverSlice - Manages driver status, location, profile, and preferences
@@ -70,14 +71,28 @@ export const createDriverSlice: StateCreator<
     messages: [],
 
     // Actions
-    setDriverStatus: (status) => set({
-        driverStatus: status,
-        // Keep driver on duty when online OR busy (during active order)
-        isOnDuty: status === 'online' || status === 'busy'
-    }),
+    setDriverStatus: async (status) => {
+        const { user } = get();
+        const isOnDuty = status === 'online' || status === 'busy';
+
+        set({
+            driverStatus: status,
+            isOnDuty
+        });
+
+        // Sync with Supabase
+        if (user) {
+            try {
+                await driverService.updateStatus(user.id, isOnDuty, status);
+            } catch (error) {
+                console.error("Failed to sync driver status:", error);
+            }
+        }
+    },
 
     setIsOnDuty: (isOnDuty) => {
         const state = get();
+        const { user } = state;
 
         // SECURITY: Prevent going offline if driver has an active order
         if (!isOnDuty && state.currentOrder) {
@@ -85,10 +100,17 @@ export const createDriverSlice: StateCreator<
             return false;
         }
 
+        const newStatus = isOnDuty ? "online" : "offline";
         set({
             isOnDuty,
-            driverStatus: isOnDuty ? "online" : "offline"
+            driverStatus: newStatus
         });
+
+        // Sync with Supabase
+        if (user) {
+            driverService.updateStatus(user.id, isOnDuty, newStatus)
+                .catch(err => console.error("Failed to sync onDuty status:", err));
+        }
 
         return true;
     },

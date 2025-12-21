@@ -50,7 +50,9 @@ export interface AuthSlice {
     setUser: (user: User | null) => void;
     setIsLoading: (loading: boolean) => void;
     setSplashComplete: (complete: boolean) => void;
-    logout: () => boolean;
+    signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    signUp: (data: { email: string; password: string; fullName: string; vehicleType: DriverPreferences['vehicleType'] }) => Promise<{ success: boolean; error?: string }>;
+    logout: () => Promise<boolean>;
 }
 
 // ============ DRIVER SLICE ============
@@ -89,10 +91,12 @@ export interface OrderSlice {
     lastCompletedOrder: Order | null;
 
     // Actions
-    acceptOrder: (orderId: string) => void;
-    updateOrderStatus: (status: Order['status']) => void;
-    completeOrder: () => void;
-    rejectOrder: (orderId: string) => void;
+    acceptOrder: (orderId: string) => Promise<void>;
+    updateOrderStatus: (status: Order['status']) => Promise<void>;
+    completeOrder: (proof?: Order['proof']) => Promise<void>;
+    rejectOrder: (orderId: string) => Promise<void>;
+    initializeOrders: () => Promise<void>;
+    subscribeToNewOrders: () => () => void; // Returns unsubscribe function
     triggerNewOrder: () => void;
     clearSummary: () => void;
 

@@ -142,6 +142,7 @@ export default {
         "shimmer": "shimmer 2s linear infinite",
         "pulse-ring": "pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "spin-slow": "spin-slow 3s linear infinite",
+        "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
     },
   },

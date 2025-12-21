@@ -1,182 +1,128 @@
 import { useAppStore } from "@/stores/useAppStore";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
     Calendar,
+    ChevronRight,
     MapPin,
     Clock,
-    Euro,
+    CreditCard,
     Search,
     Filter,
-    ArrowDownRight,
-    ArrowRight
+    ArrowLeft
 } from "lucide-react";
-import { useState } from "react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 
 export const HistoryPage = () => {
+    const navigate = useNavigate();
     const { history } = useAppStore();
-    const [searchTerm, setSearchTerm] = useState("");
 
-    // Fonction utilitaire pour le formatage des dates
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return "Date inconnue";
-        return new Date(dateString).toLocaleDateString("fr-FR", {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+    const formatPrice = (cents: number) => {
+        return new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: 'EUR',
+        }).format(cents / 100);
     };
 
-    // Filtrage simple (par nom client ou adresse)
-    const filteredHistory = history.filter(ride =>
-        ride.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ride.pickupLocation.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ride.dropoffLocation.address.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     return (
-        <div className="p-6 max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500">
+        <div className="flex flex-col h-full bg-background/50 backdrop-blur-xl">
+            {/* Header Sticky */}
+            <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/10 p-4">
+                <div className="flex items-center gap-4 mb-6">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate('/driver')}
+                        className="rounded-full hover:bg-secondary/80"
+                    >
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <h1 className="text-2xl font-bold tracking-tight">Historique</h1>
+                </div>
 
-            {/* Résumé Mensuel */}
-            <div className="grid gap-4 md:grid-cols-2">
-                <Card className="bg-primary text-primary-foreground border-none shadow-lg">
-                    <CardContent className="p-6 flex justify-between items-center">
-                        <div>
-                            <p className="text-primary-foreground/80 text-sm font-medium mb-1">Gains du mois (Net)</p>
-                            <h2 className="text-3xl font-bold tracking-tight">{history.reduce((acc, r) => acc + r.price, 0).toFixed(2)} €</h2>
-                        </div>
-                        <div className="h-12 w-12 bg-white/20 rounded-full flex items-center justify-center">
-                            <Euro className="h-6 w-6" />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="p-6 flex justify-between items-center">
-                        <div>
-                            <p className="text-muted-foreground text-sm font-medium mb-1">Prochain Virement</p>
-                            <h2 className="text-2xl font-bold tracking-tight">01 {new Date().toLocaleDateString('fr-FR', { month: 'long' })}</h2>
-                            <p className="text-xs text-green-600 font-medium">Cycle mensuel actif</p>
-                        </div>
-                        <div className="h-12 w-12 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center">
-                            <Calendar className="h-6 w-6" />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Barre de Recherche */}
-            <div className="flex gap-2">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Rechercher une course ..."
-                        className="pl-9 bg-background h-10"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                {/* Search & Filter Bar */}
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Rechercher une course..."
+                            className="pl-9 bg-secondary/30 border-none rounded-xl"
+                        />
+                    </div>
+                    <Button variant="outline" size="icon" className="rounded-xl border-dashed">
+                        <Filter className="h-4 w-4" />
+                    </Button>
                 </div>
             </div>
 
-            {/* Liste des courses */}
-            <div className="space-y-4">
-                {filteredHistory.length === 0 ? (
-                    <div className="text-center py-20 bg-secondary/20 rounded-3xl border-2 border-dashed">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-secondary mb-4">
-                            <Calendar className="h-8 w-8 text-muted-foreground" />
+            <ScrollArea className="flex-1 px-4 py-6">
+                <div className="max-w-2xl mx-auto space-y-4">
+                    {history.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                            <div className="h-20 w-20 rounded-full bg-secondary/50 flex items-center justify-center">
+                                <Clock className="h-10 w-10 text-muted-foreground" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold">Aucune course terminée</h3>
+                                <p className="text-muted-foreground text-sm">
+                                    Vos courses terminées apparaîtront ici.
+                                </p>
+                            </div>
                         </div>
-                        <h3 className="text-lg font-medium">Aucune course trouvée</h3>
-                        <p className="text-muted-foreground max-w-sm mx-auto mt-2">
-                            Vos courses terminées apparaîtront ici. Commencez à rouler pour remplir votre historique.
-                        </p>
-                    </div>
-                ) : (
-                    filteredHistory.map((ride, index) => (
-                        <Card key={ride.id || index} className="overflow-hidden hover:shadow-md transition-shadow">
-                            <CardContent className="p-0">
-                                <div className="flex flex-col md:flex-row">
-
-                                    {/* Colonne Gauche : Date & Prix */}
-                                    <div className="p-4 md:w-48 flex flex-row md:flex-col justify-between items-center md:items-start bg-secondary/30 md:border-r">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                                                <Calendar className="mr-1 h-3 w-3" />
-                                                {ride.completedAt ? new Date(ride.completedAt).toLocaleDateString() : 'Aujourd\'hui'}
-                                            </div>
-                                            <div className="text-sm font-medium">
-                                                {ride.completedAt ? new Date(ride.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                                            </div>
+                    ) : (
+                        history.map((ride) => (
+                            <div
+                                key={ride.id}
+                                className="group relative bg-card/40 hover:bg-card/60 border border-border/10 rounded-2xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 active:scale-[0.98] cursor-pointer"
+                            >
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                                            <Calendar className="h-4 w-4" />
                                         </div>
+                                        <span className="font-semibold text-sm">
+                                            {format(new Date(ride.createdAt), "dd MMMM yyyy", { locale: fr })}
+                                        </span>
+                                    </div>
+                                    <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-none font-bold">
+                                        {formatPrice(ride.priceInCents)}
+                                    </Badge>
+                                </div>
 
-                                        <div className="text-right md:text-left mt-0 md:mt-4">
-                                            <span className="text-xl font-bold text-green-600">
-                                                {ride.price.toFixed(2)} €
-                                            </span>
-                                            {/* Payment method removed */}
-                                        </div>
+                                <div className="space-y-3 relative pl-4 border-l-2 border-dashed border-border/30 ml-2">
+                                    <div className="relative">
+                                        <div className="absolute -left-[23px] top-1 h-3 w-3 rounded-full bg-primary border-4 border-background shadow-sm" />
+                                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Départ</p>
+                                        <p className="text-sm font-medium line-clamp-1">{ride.pickupAddress}</p>
                                     </div>
 
-                                    {/* Colonne Droite : Détails Trajet */}
-                                    <div className="flex-1 p-4 md:p-5 flex flex-col justify-center gap-4">
-
-                                        {/* Trajet Visuel */}
-                                        <div className="relative pl-2 md:pl-0">
-
-                                            {/* Ligne connecteur mobile */}
-                                            <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-border md:hidden" />
-
-                                            <div className="grid md:grid-cols-2 gap-4 md:gap-8">
-                                                {/* Départ */}
-                                                <div className="flex gap-3 items-start relative">
-                                                    <div className="mt-1 h-2 w-2 rounded-full bg-blue-500 ring-4 ring-blue-500/20 shrink-0 md:hidden" />
-                                                    <div>
-                                                        <p className="text-xs text-muted-foreground mb-0.5 flex items-center">
-                                                            <MapPin className="h-3 w-3 mr-1 inline md:hidden" />
-                                                            Point de départ
-                                                        </p>
-                                                        <p className="font-medium text-sm leading-tight">{ride.pickupLocation.address}</p>
-                                                    </div>
-                                                    <div className="hidden md:block absolute -right-4 top-1/2 -translate-y-1/2 text-muted-foreground/30">
-                                                        <ArrowRight className="h-5 w-5" />
-                                                    </div>
-                                                </div>
-
-                                                {/* Arrivée */}
-                                                <div className="flex gap-3 items-start">
-                                                    <div className="mt-1 h-2 w-2 rounded-full bg-black ring-4 ring-black/10 shrink-0 md:hidden" />
-                                                    <div>
-                                                        <p className="text-xs text-muted-foreground mb-0.5">Destination</p>
-                                                        <p className="font-medium text-sm leading-tight">{ride.dropoffLocation.address}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Footer Carte : Client + Actions */}
-                                        <div className="pt-3 mt-1 border-t flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-6 w-6 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent">
-                                                    {ride.clientName.charAt(0)}
-                                                </div>
-                                                <span className="text-sm text-muted-foreground">{ride.clientName}</span>
-                                            </div>
-
-                                            <Button variant="ghost" size="sm" className="h-8 text-xs hover:bg-accent/5 hover:text-accent">
-                                                Signaler un problème
-                                            </Button>
-                                        </div>
-
+                                    <div className="relative pt-2">
+                                        <div className="absolute -left-[23px] top-3 h-3 w-3 rounded-full bg-yellow-500 border-4 border-background shadow-sm" />
+                                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Arrivée</p>
+                                        <p className="text-sm font-medium line-clamp-1">{ride.dropoffAddress}</p>
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))
-                )}
-            </div>
+
+                                <div className="mt-4 pt-4 border-t border-border/10 flex items-center justify-between text-xs text-muted-foreground">
+                                    <div className="flex gap-4">
+                                        <span className="flex items-center gap-1.5 font-medium">
+                                            <Clock className="h-3 w-3" /> 14 min
+                                        </span>
+                                        <span className="flex items-center gap-1.5 font-medium">
+                                            <CreditCard className="h-3 w-3" /> {ride.paymentMethod === 'card' ? 'Carte' : 'Espèces'}
+                                        </span>
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </ScrollArea>
         </div>
     );
 };

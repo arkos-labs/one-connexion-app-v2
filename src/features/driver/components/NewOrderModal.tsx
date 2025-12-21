@@ -2,15 +2,22 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/stores/useAppStore";
+import { Order } from "@/types";
 import { MapPin, Navigation, Timer } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
-export const NewOrderModal = () => {
+interface NewOrderModalProps {
+  order?: Order | null;
+  onAccept?: (orderId: string) => void;
+  onReject?: (orderId: string) => void;
+}
+
+export const NewOrderModal = ({ order, onAccept, onReject }: NewOrderModalProps) => {
   const { orders, acceptOrder, rejectOrder } = useAppStore();
   const [progress, setProgress] = useState(100);
 
-  // On prend la première commande en attente (la plus récente)
-  const incomingOrder = orders.length > 0 ? orders[0] : null;
+  // Use prop order or first pending order from store
+  const incomingOrder = order !== undefined ? order : (orders.length > 0 ? orders[0] : null);
 
   useEffect(() => {
     if (!incomingOrder) {
@@ -22,7 +29,8 @@ export const NewOrderModal = () => {
     const timer = setInterval(() => {
       setProgress((prev) => {
         if (prev <= 0) {
-          rejectOrder(incomingOrder.id); // Rejet auto si temps écoulé
+          if (onReject) onReject(incomingOrder.id);
+          else rejectOrder(incomingOrder.id);
           return 0;
         }
         return prev - (100 / 300); // ~30 secondes (100% / 300 ticks de 100ms)
@@ -30,20 +38,22 @@ export const NewOrderModal = () => {
     }, 100);
 
     return () => clearInterval(timer);
-  }, [incomingOrder, rejectOrder]);
+  }, [incomingOrder, rejectOrder, onReject]);
 
   if (!incomingOrder) return null;
 
   const handleAccept = (e: React.MouseEvent) => {
-    e.preventDefault(); // EMPÊCHE LE RECHARGEMENT DE PAGE
+    e.preventDefault();
     e.stopPropagation();
-    acceptOrder(incomingOrder.id);
+    if (onAccept) onAccept(incomingOrder.id);
+    else acceptOrder(incomingOrder.id);
   };
 
   const handleReject = (e: React.MouseEvent) => {
-    e.preventDefault(); // EMPÊCHE LE RECHARGEMENT DE PAGE
+    e.preventDefault();
     e.stopPropagation();
-    rejectOrder(incomingOrder.id);
+    if (onReject) onReject(incomingOrder.id);
+    else rejectOrder(incomingOrder.id);
   };
 
   return (
@@ -58,14 +68,14 @@ export const NewOrderModal = () => {
             Nouvelle Course !
           </DialogTitle>
           <DialogDescription className="text-center">
-            À {incomingOrder.distance} de votre position
+            À {incomingOrder.distance || 'quelques minutes'} de votre position
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Prix */}
           <div className="text-center">
-            <span className="text-4xl font-extrabold text-primary">{incomingOrder.price.toFixed(2)} €</span>
+            <span className="text-4xl font-extrabold text-primary">{(incomingOrder.price * 0.40).toFixed(2)} €</span>
             <span className="text-sm text-muted-foreground ml-1">Net chauffeur</span>
           </div>
 

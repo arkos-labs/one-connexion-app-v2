@@ -27,7 +27,15 @@ export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
       // Redirige vers login en mémorisant d'où on vient
       navigate('/login', { state: { from: location }, replace: true });
     } else {
-      console.log("✅ Authenticated, access granted");
+      console.log("✅ Authenticated, initializing orders...");
+      // Initialiser les données et les abonnements
+      useAppStore.getState().initializeOrders();
+      const unsubscribe = useAppStore.getState().subscribeToNewOrders();
+
+      return () => {
+        console.log("Cleanup order subscriptions");
+        unsubscribe();
+      };
     }
   }, [isAuthenticated, hydrated, navigate, location]);
 

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Application Chauffeur (Driver App)
+  app-chauffeur-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: app-chauffeur-dev
+    ports:
+      - "5173:5173"  # Port pour l'app chauffeur
+    volumes:
+      # Monter le code source pour le hot reload
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.node.json:/app/tsconfig.node.json
+      - ./capacitor.config.ts:/app/capacitor.config.ts
+      - ./.env:/app/.env
+      
+      # Exclure node_modules
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge

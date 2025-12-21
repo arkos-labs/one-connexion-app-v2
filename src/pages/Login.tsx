@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAppStore } from "@/stores/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Lock, Mail, Eye, EyeOff, ChevronRight } from "lucide-react";
+import { Loader2, Lock, Mail, Eye, EyeOff, ChevronRight, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 const Login = () => {
@@ -23,32 +23,19 @@ const Login = () => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simulation d'un appel API réseau
-        setTimeout(() => {
-            // Validation simple pour la démo
-            if (formData.email && formData.password.length >= 6) {
+        const result = await useAppStore.getState().signIn(formData.email, formData.password);
 
-                // Connexion via le store
-                setUser({
-                    id: "driver-123",
-                    email: formData.email,
-                    fullName: "Thomas Anderson",
-                    role: "driver"
-                });
-
-                toast.success("Bon retour parmi nous !", {
-                    description: "Connexion sécurisée établie."
-                });
-
-                // Redirection vers l'espace chauffeur
-                navigate("/driver");
-            } else {
-                toast.error("Échec de connexion", {
-                    description: "Vérifiez vos identifiants."
-                });
-            }
-            setIsLoading(false);
-        }, 1500);
+        if (result.success) {
+            toast.success("Bon retour parmi nous !", {
+                description: "Connexion sécurisée établie."
+            });
+            navigate("/driver");
+        } else {
+            toast.error("Échec de connexion", {
+                description: result.error || "Vérifiez vos identifiants."
+            });
+        }
+        setIsLoading(false);
     };
 
     return (
@@ -129,30 +116,54 @@ const Login = () => {
                         </div>
 
                         {/* Bouton Action */}
-                        <Button
-                            type="submit"
-                            className="w-full h-12 text-base shadow-lg shadow-primary/20 transition-all hover:scale-[1.01]"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                    Connexion...
-                                </>
-                            ) : (
-                                <>
-                                    Accéder à mon compte
-                                    <ChevronRight className="ml-2 h-5 w-5" />
-                                </>
-                            )}
-                        </Button>
+                        <div className="space-y-3">
+                            <Button
+                                type="submit"
+                                className="w-full h-12 text-base shadow-lg shadow-primary/20 transition-all hover:scale-[1.01]"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                        Connexion...
+                                    </>
+                                ) : (
+                                    <>
+                                        Accéder à mon compte
+                                        <ChevronRight className="ml-2 h-5 w-5" />
+                                    </>
+                                )}
+                            </Button>
+
+                            {/* BOUTON DÉMO / SANS AUTH */}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setUser({
+                                        id: "demo-id",
+                                        email: "chauffeur@demo.com",
+                                        fullName: "Chauffeur Démo",
+                                        role: "driver"
+                                    });
+                                    toast.success("Mode Démo activé");
+                                    navigate("/driver");
+                                }}
+                                className="w-full h-12 border-dashed border-2 hover:bg-secondary/50 text-muted-foreground font-bold"
+                            >
+                                <Zap className="mr-2 h-4 w-4 text-yellow-500" />
+                                Accès Rapide (Mode Démo)
+                            </Button>
+                        </div>
                     </form>
 
                     {/* Footer Inscription */}
-                    <div className="text-center pt-4">
+                    <div className="text-center pt-2">
                         <p className="text-sm text-muted-foreground">
                             Pas encore partenaire ?{" "}
-                            <a href="#" className="font-semibold text-primary hover:underline">Devenir coursier</a>
+                            <Link to="/register" className="font-semibold text-primary hover:underline">
+                                Devenir coursier
+                            </Link>
                         </p>
                     </div>
 

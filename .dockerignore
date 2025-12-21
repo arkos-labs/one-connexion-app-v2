@@ -1,0 +1,48 @@
+# Dépendances
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build
+dist
+build
+.vite
+
+# Environnement
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Git
+.git
+.gitignore
+
+# Tests
+coverage
+.nyc_output
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Capacitor (pour mobile, pas nécessaire dans Docker)
+android
+ios
+.capacitor
+
+# Logs
+*.log
+logs
