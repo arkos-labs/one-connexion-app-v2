@@ -2,7 +2,9 @@ import { StateCreator } from "zustand";
 import Decimal from "decimal.js";
 import { Order } from "../../types";
 import { AppStore, OrderSlice } from "../types";
-import { orderService } from "../../services/orderService";
+import { orderService, mapSupabaseToOrder } from "../../services/orderService";
+import { driverService } from "../../services/driverService";
+import { supabase } from "../../lib/supabase";
 
 /**
  * OrderSlice - Manages orders, earnings, and order lifecycle
@@ -19,6 +21,7 @@ export const createOrderSlice: StateCreator<
     history: [],
     earningsInCents: 0,
     lastCompletedOrder: null,
+    refusedOrderIds: [], // Blacklist des commandes refusées
 
     // Actions
     initializeOrders: async () => {
@@ -26,18 +29,42 @@ export const createOrderSlice: StateCreator<
         if (!user) return;
 
         try {
-            const [availableOrders, currentOrder] = await Promise.all([
+            console.log(`📡 [OrderSlice] Initialisation pour l'utilisateur: ${user.id}`);
+            const [availableOrders, currentOrder, driverProfile] = await Promise.all([
                 orderService.fetchAvailableOrders(user.id),
-                orderService.fetchDriverCurrentOrder(user.id)
+                orderService.fetchDriverCurrentOrder(user.id),
+                driverService.getDriverProfile(user.id).catch(e => {
+                    console.warn("⚠️ Impossible de récupérer le profil chauffeur, utilisation des défauts", e);
+                    return null;
+                })
             ]);
+
+            console.log(`📦 [OrderSlice] Initialisé:`, {
+                offresDispo: availableOrders.length,
+                missionActive: currentOrder?.id || 'Aucune',
+                dbStatus: driverProfile?.status || 'unknown'
+            });
+
+            // Déterminer le statut correct
+            let newStatus = driverProfile?.status || 'offline';
+            let newIsOnDuty = driverProfile?.is_online || false;
+
+            // Si une commande est active, on force le statut 'busy' et 'isOnDuty'
+            if (currentOrder) {
+                newStatus = 'busy';
+                newIsOnDuty = true;
+            }
 
             set({
                 orders: availableOrders,
                 currentOrder: currentOrder,
-                driverStatus: currentOrder ? "busy" : "online"
+                driverStatus: newStatus as any, // Cast nécessaire si le typage TS strict rale un peu
+                isOnDuty: newIsOnDuty,
+                isLoading: false
             });
         } catch (error) {
-            console.error("Failed to initialize orders:", error);
+            console.error("❌ [OrderSlice] Échec initialisation:", error);
+            set({ isLoading: false });
         }
     },
 
@@ -47,62 +74,84 @@ export const createOrderSlice: StateCreator<
 
         const subscription = orderService.subscribeToOrders((order) => {
             const state = get();
+            const { user, refusedOrderIds } = state;
+            if (!user) return;
 
-            // 1. Is this order relevant to us? (Assigned to us OR Unassigned pool)
+            // 🚫 BLACKLIST: Ignorer les commandes refusées par ce chauffeur
+            if (refusedOrderIds && refusedOrderIds.includes(order.id)) {
+                console.log(`🚫 [OrderSlice] Commande ${order.id} ignorée (refusée précédemment par ce chauffeur)`);
+                return;
+            }
+
             const isForMe = order.assignedDriverId === user.id;
             const isUnassigned = !order.assignedDriverId;
 
-            // If assigned to someone else, remove it from our list if present
-            if (!isForMe && !isUnassigned) {
-                if (state.orders.some(o => o.id === order.id)) {
-                    set({ orders: state.orders.filter(o => o.id !== order.id) });
-                }
+            console.log(`🔔 [OrderSlice] Signal reçu pour commande ${order.id}:`, {
+                status: order.status,
+                isForMe,
+                isUnassigned,
+                assignedTo: order.assignedDriverId,
+                me: user.id
+            });
+
+            // --- 1. GESTION DE LA MISSION ACTIVE ---
+            const activeStatuses = ['accepted', 'arrived_pickup', 'in_progress'];
+            if (isForMe && activeStatuses.includes(order.status)) {
+                console.log(`🚀 [OrderSlice] Transition vers mission active: ${order.id}`);
+                set(prev => ({
+                    currentOrder: order,
+                    driverStatus: 'busy',
+                    orders: prev.orders.filter(o => o.id !== order.id)
+                }));
                 return;
             }
 
-            // 2. Handle Active Order Updates (accepted/in_progress/completed)
-            // If I am the assigned driver, these updates affect my currentOrder
-            if (isForMe && ['accepted', 'in_progress', 'completed'].includes(order.status)) {
-                if (state.currentOrder?.id === order.id) {
-                    set({ currentOrder: order });
-                    // Ensure it's not in the pending list
-                    set(prev => ({ orders: prev.orders.filter(o => o.id !== order.id) }));
-                } else if (!state.currentOrder && order.status === 'accepted') {
-                    // Case: Accepted on another device or missed state transition
-                    set({ currentOrder: order, driverStatus: 'busy', orders: state.orders.filter(o => o.id !== order.id) });
-                }
-                return;
-            }
-
-            // 3. Handle Pending Offers (Assigned or Pool)
-            // Note: 'assigned' status in DB is mapped to 'pending' in App by mapSupabaseToOrder
+            // --- 2. GESTION DES OFFRES (Modale) ---
             if (order.status === 'pending') {
-                set((prev) => {
-                    const exists = prev.orders.some(o => o.id === order.id);
-                    if (exists) {
-                        // UPDATE existing order (e.g. details changed, or status changed from pool to assigned)
-                        console.log(`🔄 [OrderSlice] Mise à jour commande existante ${order.id}`);
-                        return {
-                            orders: prev.orders.map(o => o.id === order.id ? order : o)
-                        };
-                    } else {
-                        // INSERT new order
-                        console.log(`📥 [OrderSlice] Ajout nouvelle commande ${order.id}`);
-                        return {
-                            orders: [...prev.orders, order]
-                        };
+                if (isUnassigned || isForMe) {
+                    // Si c'est déjà notre mission active, on ne l'ajoute pas aux offres
+                    if (state.currentOrder?.id === order.id) return;
+
+                    set((prev) => {
+                        const existing = prev.orders.find(o => o.id === order.id);
+                        // OPTIMISATION : Ne pas mettre à jour si l'ordre est identique (statut et assignation)
+                        if (existing &&
+                            existing.status === order.status &&
+                            existing.assignedDriverId === order.assignedDriverId) {
+                            return prev;
+                        }
+
+                        const others = prev.orders.filter(o => o.id !== order.id);
+                        console.log(`📥 [OrderSlice] Offre mise à jour: ${order.id} (Assignée: ${isForMe ? 'OUI' : 'NON'})`);
+                        return { orders: [...others, order] };
+                    });
+                } else {
+                    // Assignée à quelqu'un d'autre -> On s'assure qu'elle n'est pas dans nos offres
+                    if (state.orders.some(o => o.id === order.id)) {
+                        console.log(`🚫 [OrderSlice] Retrait offre ${order.id} (assignée à autrui)`);
+                        set(prev => ({ orders: prev.orders.filter(o => o.id !== order.id) }));
                     }
-                });
+                }
+                return;
             }
 
-            // 4. Handle Cancellations
-            if (order.status === 'cancelled') {
-                console.log(`🚫 [OrderSlice] Commande annulée ${order.id}`);
+            // --- 3. GESTION DES ANNULATIONS / FINALISATIONS / NETTOYAGE ---
+            if (['completed', 'cancelled', 'expired'].includes(order.status)) {
+                console.log(`🏁 [OrderSlice] Terminaison: ${order.id} (${order.status})`);
                 set(prev => ({
                     orders: prev.orders.filter(o => o.id !== order.id),
                     currentOrder: prev.currentOrder?.id === order.id ? null : prev.currentOrder,
                     driverStatus: prev.currentOrder?.id === order.id ? 'online' : prev.driverStatus
                 }));
+                return;
+            }
+
+            // --- 4. NETTOYAGE GÉNÉRIQUE ---
+            // Si on arrive ici, l'ordre n'est ni en mission active (block 1) ni en offre (block 2)
+            // On s'assure qu'il disparait des offres.
+            if (state.orders.some(o => o.id === order.id)) {
+                console.log(`🧹 [OrderSlice] Nettoyage offre ${order.id} (nouveau statut: ${order.status})`);
+                set(prev => ({ orders: prev.orders.filter(o => o.id !== order.id) }));
             }
         });
 
@@ -116,16 +165,26 @@ export const createOrderSlice: StateCreator<
         try {
             console.log(`🚗 [OrderSlice] Acceptation de la commande ${orderId}`);
 
-            // Mise à jour avec la position actuelle du chauffeur
-            const updatedOrder = await orderService.updateStatusWithLocation(
-                orderId,
-                'driver_accepted',
-                driverLocation,
-                {
-                    driver_id: user.id,
-                    accepted_at: new Date().toISOString()
-                }
-            );
+            // UPDATE direct avec RLS permissif
+            const { data, error } = await supabase
+                .from('orders')
+                .update({
+                    status: 'driver_accepted',
+                    accepted_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', orderId)
+                .select()
+                .single();
+
+            if (error) {
+                console.error("❌ [OrderSlice] Erreur UPDATE accept:", error);
+                throw error;
+            }
+
+            console.log(`✅ [OrderSlice] Commande acceptée:`, data);
+
+            const updatedOrder = mapSupabaseToOrder(data as any);
 
             // Update status to busy (this will also keep isOnDuty = true)
             setDriverStatus("busy");
@@ -141,7 +200,7 @@ export const createOrderSlice: StateCreator<
         }
     },
 
-    updateOrderStatus: async (status) => {
+    updateOrderStatus: async (orderId, status) => {
         const { currentOrder, driverLocation } = get();
         if (!currentOrder) return;
 
@@ -150,7 +209,7 @@ export const createOrderSlice: StateCreator<
             if (status === 'accepted') sbStatus = 'driver_accepted';
             if (status === 'completed') sbStatus = 'delivered';
 
-            console.log(`📝 [OrderSlice] Mise à jour statut: ${status} -> ${sbStatus}`);
+            console.log(`📝 [OrderSlice] Mise à jour statut pour ${orderId}: ${status} -> ${sbStatus}`);
 
             // Déterminer les données additionnelles selon le statut
             const additionalData: any = {};
@@ -173,8 +232,15 @@ export const createOrderSlice: StateCreator<
                 additionalData
             );
 
+            console.log(`🔍 [OrderSlice] Commande mise à jour reçue:`, {
+                id: updatedOrder.id,
+                status: updatedOrder.status,
+                hasAllFields: !!(updatedOrder.pickupLocation && updatedOrder.dropoffLocation)
+            });
+
             set({ currentOrder: updatedOrder });
             console.log(`✅ [OrderSlice] Statut mis à jour, admin notifié`);
+            console.log(`🔍 [OrderSlice] currentOrder après mise à jour:`, get().currentOrder);
         } catch (error) {
             console.error("❌ [OrderSlice] Échec mise à jour statut:", error);
         }
@@ -186,8 +252,11 @@ export const createOrderSlice: StateCreator<
 
         try {
             console.log(`🎯 [OrderSlice] Finalisation de la commande ${currentOrder.id}`);
+            console.log(`📍 [OrderSlice] Position actuelle:`, driverLocation);
+            console.log(`📸 [OrderSlice] Preuve:`, proof);
 
             // Mise à jour avec géolocalisation de livraison + preuve
+            console.log(`🔄 [OrderSlice] Appel updateStatusWithLocation...`);
             const updatedOrder = await orderService.updateStatusWithLocation(
                 currentOrder.id,
                 'delivered',
@@ -198,6 +267,7 @@ export const createOrderSlice: StateCreator<
                     proof_data: proof?.dataUrl
                 }
             );
+            console.log(`✅ [OrderSlice] updateStatusWithLocation terminé:`, updatedOrder);
 
             // Fill local proof if returned or manually
             if (proof) {
@@ -243,15 +313,21 @@ export const createOrderSlice: StateCreator<
         try {
             console.log(`👎 [OrderSlice] Refus de la commande ${orderId}`);
 
-            // Remove locally first for immediate UI feedback
+            // 🚫 BLACKLIST: Ajouter à la liste des refus pour éviter le spam
             set((state) => ({
-                orders: state.orders.filter(o => o.id !== orderId)
+                orders: state.orders.filter(o => o.id !== orderId),
+                refusedOrderIds: [...state.refusedOrderIds, orderId]
             }));
+
+            console.log(`🚫 [OrderSlice] Commande ${orderId} ajoutée à la blacklist locale`);
 
             // Update server
             await orderService.rejectOrderAssignment(orderId, user.id);
 
-            console.log(`✅ [OrderSlice] Commande refusée sur le serveur`);
+            // Revenir en ligne
+            get().setDriverStatus("online");
+
+            console.log(`✅ [OrderSlice] Commande refusée sur le serveur et chauffeur remis en ligne`);
         } catch (error) {
             console.error("❌ [OrderSlice] Échec refus commande:", error);
             // Optionally revert local state if needed, but for now we prioritize UI responsiveness

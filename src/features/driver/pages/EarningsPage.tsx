@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useAppStore } from "@/stores/useAppStore";
 import {
     TrendingUp,
@@ -17,26 +18,21 @@ import {
     Tooltip,
     ResponsiveContainer
 } from 'recharts';
+import { toast } from "sonner";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
-// Mock data pour le graphique
-const data = [
-    { name: 'Lun', total: 120 },
-    { name: 'Mar', total: 150 },
-    { name: 'Mer', total: 80 },
-    { name: 'Jeu', total: 220 },
-    { name: 'Ven', total: 190 },
-    { name: 'Sam', total: 310 },
-    { name: 'Dim', total: 250 },
-];
+
 
 export const EarningsPage = () => {
     const navigate = useNavigate();
-    const { earningsInCents, history } = useAppStore();
+    const { earningsInCents, history: rawHistory } = useAppStore();
+    const history = rawHistory || [];
 
     const formatPrice = (cents: number) => {
         return new Intl.NumberFormat('fr-FR', {
@@ -45,7 +41,62 @@ export const EarningsPage = () => {
         }).format(cents / 100);
     };
 
-    const weeklyTotal = data.reduce((acc, curr) => acc + curr.total, 0) * 100;
+    const chartData = useMemo(() => {
+        const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+        const orderedDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+        const dataMap = new Map(orderedDays.map(d => [d, 0]));
+
+        history.forEach(ride => {
+            const date = new Date(ride.createdAt);
+            const dayName = days[date.getDay()];
+            if (dataMap.has(dayName)) {
+                dataMap.set(dayName, dataMap.get(dayName)! + (ride.priceInCents / 100));
+            }
+        });
+
+        return orderedDays.map(name => ({ name, total: dataMap.get(name) || 0 }));
+    }, [history]);
+
+    const weeklyTotal = chartData.reduce((acc, curr) => acc + curr.total, 0) * 100;
+
+    const handleExport = () => {
+        try {
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFontSize(20);
+            doc.text("Relevé de Gains - One Connexion", 14, 22);
+
+            doc.setFontSize(11);
+            doc.setTextColor(100);
+            doc.text(`Date d'export : ${new Date().toLocaleDateString('fr-FR')}`, 14, 30);
+            doc.text(`Solde disponible : ${formatPrice(earningsInCents)}`, 14, 36);
+
+            // Table
+            const tableColumn = ["Date", "ID Course", "Montant", "Statut"];
+            const tableRows = history.map(ride => [
+                new Date(ride.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + new Date(ride.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                "#" + ride.id.slice(0, 8),
+                formatPrice(ride.priceInCents),
+                "Terminée"
+            ]);
+
+            autoTable(doc, {
+                head: [tableColumn],
+                body: tableRows,
+                startY: 45,
+                theme: 'grid',
+                styles: { fontSize: 10, cellPadding: 3 },
+                headStyles: { fillColor: [22, 163, 74] } // Green color
+            });
+
+            doc.save(`releve-gains-${new Date().toISOString().split('T')[0]}.pdf`);
+            toast.success("Export téléchargé avec succès !");
+        } catch (error) {
+            console.error(error);
+            toast.error("Erreur lors de la génération du PDF");
+        }
+    };
 
     return (
         <div className="flex flex-col h-full bg-background/50 backdrop-blur-xl">
@@ -63,7 +114,12 @@ export const EarningsPage = () => {
                         </Button>
                         <h1 className="text-2xl font-bold tracking-tight">Mes Revenus</h1>
                     </div>
-                    <Button variant="outline" size="sm" className="rounded-full gap-2 border-border/10">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full gap-2 border-border/10"
+                        onClick={handleExport}
+                    >
                         <Download className="h-4 w-4" />
                         Exporter
                     </Button>
@@ -131,7 +187,7 @@ export const EarningsPage = () => {
                         <CardContent>
                             <div className="h-[250px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -176,20 +232,30 @@ export const EarningsPage = () => {
                     <div className="space-y-4">
                         <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-2">Dernières transactions</h3>
                         <div className="space-y-2">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="flex items-center justify-between p-4 bg-card/20 rounded-2xl border border-border/5">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                                            <ArrowUpRight className="h-5 w-5 text-green-500" />
+                            <div className="space-y-2">
+                                {history.length === 0 ? (
+                                    <p className="text-center text-muted-foreground p-4">Aucune transaction récente</p>
+                                ) : (
+                                    history.slice(0, 5).map((ride, i) => (
+                                        <div key={ride.id} className="flex items-center justify-between p-4 bg-card/20 rounded-2xl border border-border/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                                                    <ArrowUpRight className="h-5 w-5 text-green-500" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm">Course #{ride.id.slice(0, 6)}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Terminée • {new Date(ride.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className="font-bold text-sm text-green-500">
+                                                {formatPrice(ride.priceInCents)}
+                                            </span>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-sm">Course #543{i}</p>
-                                            <p className="text-xs text-muted-foreground">Terminée • Aujourd'hui</p>
-                                        </div>
-                                    </div>
-                                    <span className="font-bold text-sm text-green-500">+12,50 €</span>
-                                </div>
-                            ))}
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
 

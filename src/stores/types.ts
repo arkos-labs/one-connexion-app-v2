@@ -89,10 +89,11 @@ export interface OrderSlice {
     history: Order[];
     earningsInCents: number; // Store in cents to avoid floating point errors
     lastCompletedOrder: Order | null;
+    refusedOrderIds: string[]; // Blacklist des commandes refusées (évite le spam)
 
     // Actions
     acceptOrder: (orderId: string) => Promise<void>;
-    updateOrderStatus: (status: Order['status']) => Promise<void>;
+    updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
     completeOrder: (proof?: Order['proof']) => Promise<void>;
     rejectOrder: (orderId: string) => Promise<void>;
     initializeOrders: () => Promise<void>;

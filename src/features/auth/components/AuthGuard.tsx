@@ -14,6 +14,29 @@ export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Effet stable pour les abonnements (ne dépend pas de location/navigate)
+  useEffect(() => {
+    if (hydrated && isAuthenticated) {
+      console.log("✅ Authenticated, initializing data stream...");
+      const { initializeOrders, subscribeToNewOrders } = useAppStore.getState();
+
+      initializeOrders();
+      const unsub = subscribeToNewOrders();
+
+      // Polling de sécurité toutes les 10s pour garantir la réception des ordres
+      const interval = setInterval(() => {
+        console.log("🔄 [AuthGuard] Polling de sécurité commandes...");
+        initializeOrders();
+      }, 10000);
+
+      return () => {
+        console.log("Cleanup stable order subscriptions and polling");
+        unsub();
+        clearInterval(interval);
+      };
+    }
+  }, [isAuthenticated, hydrated, useAppStore.getState().initializeOrders, useAppStore.getState().subscribeToNewOrders]);
+
   useEffect(() => {
     // ⚠️ NE PAS rediriger tant que le store n'est pas hydraté
     if (!hydrated) {
@@ -21,21 +44,10 @@ export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Une fois hydraté, vérifier l'authentification
+    // Une fois hydraté, vérifier l'authentification pour redirection
     if (!isAuthenticated) {
       console.log("🚫 Not authenticated, redirecting to login...");
-      // Redirige vers login en mémorisant d'où on vient
       navigate('/login', { state: { from: location }, replace: true });
-    } else {
-      console.log("✅ Authenticated, initializing orders...");
-      // Initialiser les données et les abonnements
-      useAppStore.getState().initializeOrders();
-      const unsubscribe = useAppStore.getState().subscribeToNewOrders();
-
-      return () => {
-        console.log("Cleanup order subscriptions");
-        unsubscribe();
-      };
     }
   }, [isAuthenticated, hydrated, navigate, location]);
 

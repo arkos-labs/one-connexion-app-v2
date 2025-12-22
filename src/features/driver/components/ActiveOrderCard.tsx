@@ -81,7 +81,7 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
       nextAction: "Confirmer la Prise en charge",
       nextStatus: 'in_progress' as const
     };
-  } else {
+  } else if (order.status === 'in_progress') {
     statusConfig = {
       title: "En route vers la livraison",
       color: "text-green-500",
@@ -89,6 +89,16 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
       bgColor: "bg-green-500/10",
       nextAction: "Terminer la Course",
       nextStatus: 'completed' as const
+    };
+  } else {
+    // Fallback for safety (should not be visible if currentOrder logic is correct)
+    statusConfig = {
+      title: "Mission en cours",
+      color: "text-zinc-500",
+      thumbColor: "bg-zinc-600",
+      bgColor: "bg-zinc-500/10",
+      nextAction: "Chargement...",
+      nextStatus: 'pending' as any
     };
   }
 
@@ -114,10 +124,10 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
       setSliderConfirmed(true);
 
       setTimeout(() => {
-        // Intercept completion for Proof
-        if (statusConfig.nextStatus === 'completed') {
+        // Intercept completion for Proof - ONLY if in the correct phase
+        if (statusConfig.nextStatus === 'completed' && order.status === 'in_progress') {
           setIsProofModalOpen(true);
-        } else {
+        } else if (statusConfig.nextStatus !== 'pending') {
           onStatusChange(order.id, statusConfig.nextStatus);
         }
         setSliderConfirmed(false);

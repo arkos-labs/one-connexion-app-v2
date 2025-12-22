@@ -137,11 +137,11 @@ export const DriverMap = ({ activeOrder, driverLocation }: DriverMapProps) => {
     };
 
     return (
-        <div className="relative w-full h-full">
+        <div className="relative w-full h-full z-0">
             <MapContainer
                 center={[driverLocation.lat, driverLocation.lng]}
                 zoom={16}
-                style={{ height: "100%", width: "100%" }}
+                style={{ height: "100%", width: "100%", zIndex: 0 }}
                 zoomControl={false}
                 attributionControl={false}
             >

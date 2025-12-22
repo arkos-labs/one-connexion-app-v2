@@ -19,7 +19,8 @@ import { useNavigate } from "react-router-dom";
 
 export const HistoryPage = () => {
     const navigate = useNavigate();
-    const { history } = useAppStore();
+    const { history: rawHistory } = useAppStore();
+    const history = rawHistory || [];
 
     const formatPrice = (cents: number) => {
         return new Intl.NumberFormat('fr-FR', {

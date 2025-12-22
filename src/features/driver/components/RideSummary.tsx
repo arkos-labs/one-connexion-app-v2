@@ -48,7 +48,6 @@ export const RideSummary = ({ order }: { order: Order }) => {
                         </div>
                     </motion.div>
                     <h2 className="text-2xl font-bold">Course Terminée !</h2>
-                    <p className="text-green-100">Paiement reçu</p>
                 </div>
 
                 {/* Corps du résumé */}

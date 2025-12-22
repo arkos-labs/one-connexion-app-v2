@@ -7,25 +7,24 @@ const RINGTONE_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-prev
 
 export const useIncomingOrderAlert = () => {
     const { orders, driverStatus, user } = useAppStore();
-    const pendingOrder = orders.find(o =>
-        o.status === 'pending' ||
-        (o.status === 'assigned' && o.assignedDriverId === user?.id)
-    );
+    const pendingOrder = orders.find(o => o.status === 'pending');
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const vibrationInterval = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         const shouldRing = pendingOrder && driverStatus === 'online';
+        const pendingOrderId = pendingOrder?.id;
 
         if (shouldRing) {
+            console.log(`🔔 [IncomingOrderAlert] Démarrage alerte pour ${pendingOrderId}`);
             startAlert();
         } else {
             stopAlert();
         }
 
         return () => stopAlert();
-    }, [pendingOrder, driverStatus]);
+    }, [pendingOrder?.id, driverStatus]);
 
     const startAlert = () => {
         // 1. Configuration Audio

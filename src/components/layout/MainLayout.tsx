@@ -17,7 +17,11 @@ export function MainLayout({ children }: { children?: React.ReactNode }) {
   // 1. Activer l'écoute des commandes GLOBALEMENT
   useIncomingOrderAlert();
 
-  const { currentOrder, orders, isOnDuty, acceptOrder, rejectOrder } = useAppStore();
+  const currentOrder = useAppStore(state => state.currentOrder);
+  const orders = useAppStore(state => state.orders);
+  const isOnDuty = useAppStore(state => state.isOnDuty);
+  const acceptOrder = useAppStore(state => state.acceptOrder);
+  const rejectOrder = useAppStore(state => state.rejectOrder);
 
   // 1.5 Gestion du KeepAwake (Mobile uniquement)
   useEffect(() => {
@@ -49,13 +53,14 @@ export function MainLayout({ children }: { children?: React.ReactNode }) {
     };
   }, [location.pathname]);
 
-  // Logique pour trouver une commande en attente (globale "pending" ou assignée spécifiquement)
-  const pendingOrder = isOnDuty && !currentOrder
-    ? orders.find(o =>
-      o.status === 'pending' ||
-      (o.status === 'assigned' && o.assignedDriverId === useAppStore.getState().user?.id)
-    ) || null
+  // Logique pour trouver une commande en attente (déjà filtrée par le store)
+  const pendingOrder = (isOnDuty && !currentOrder)
+    ? orders.find(o => o.status === 'pending') || null
     : null;
+
+  if (pendingOrder) {
+    console.log(`📡 [MainLayout] Commande en attente détectée: ${pendingOrder.id}`);
+  }
 
   const handleAcceptOrder = (orderId: string) => acceptOrder(orderId);
   const handleRejectOrder = (orderId: string) => rejectOrder(orderId);

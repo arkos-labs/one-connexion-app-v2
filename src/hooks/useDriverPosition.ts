@@ -13,6 +13,7 @@ export const useDriverPosition = () => {
     const isOnDuty = useAppStore((state) => state.isOnDuty);
     const driverLocation = useAppStore((state) => state.driverLocation);
     const user = useAppStore((state) => state.user);
+    const currentOrder = useAppStore((state) => state.currentOrder);
 
     const [isSimulating, setIsSimulating] = useState(false);
 
@@ -59,9 +60,9 @@ export const useDriverPosition = () => {
 
                 setDriverLocation(newLocation);
 
-                // Sync with Supabase
+                // Sync with Supabase (includes current order ID if available)
                 if (user) {
-                    driverService.updateLocation(user.id, newLocation.lat, newLocation.lng);
+                    driverService.updateLocation(user.id, newLocation.lat, newLocation.lng, currentOrder?.id);
                 }
             }
         };
@@ -110,7 +111,7 @@ export const useDriverPosition = () => {
                 }
             }
         };
-    }, [isOnDuty, isSimulating, setDriverLocation, user]);
+    }, [isOnDuty, isSimulating, setDriverLocation, user, currentOrder]);
 
     // 2. Moteur de Simulation (Interpolation Fluide)
     const simulateTravel = useCallback((to: { lat: number; lng: number }, durationSeconds: number = 5) => {
@@ -132,7 +133,7 @@ export const useDriverPosition = () => {
                 if (simulationInterval.current) clearInterval(simulationInterval.current);
                 simulationInterval.current = null;
                 setDriverLocation(to);
-                if (user) driverService.updateLocation(user.id, to.lat, to.lng);
+                if (user) driverService.updateLocation(user.id, to.lat, to.lng, currentOrder?.id);
 
                 setTimeout(() => {
                     setIsSimulating(false);
@@ -144,10 +145,10 @@ export const useDriverPosition = () => {
                     lng: start.lng + (to.lng - start.lng) * progress
                 };
                 setDriverLocation(newLoc);
-                if (user) driverService.updateLocation(user.id, newLoc.lat, newLoc.lng);
+                if (user) driverService.updateLocation(user.id, newLoc.lat, newLoc.lng, currentOrder?.id);
             }
         }, 1000 / fps);
-    }, [driverLocation, setDriverLocation, user]);
+    }, [driverLocation, setDriverLocation, user, currentOrder]);
 
     return { simulateTravel, isSimulating };
 };

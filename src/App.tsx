@@ -21,7 +21,7 @@ import { SupportPage } from "./features/driver/pages/SupportPage";
 import { DashboardHome } from "./features/dashboard/components/DashboardHome";
 
 // 🧪 Import des utilitaires de test (disponibles dans window.testOrders)
-import "./utils/testOrders";
+
 
 
 const queryClient = new QueryClient();

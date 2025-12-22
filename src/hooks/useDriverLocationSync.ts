@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '@/stores/useAppStore';
 import { orderService } from '@/services/orderService';
+import { driverService } from '@/services/driverService';
 
 /**
  * Hook pour synchroniser la position du chauffeur en temps réel
@@ -9,48 +10,83 @@ import { orderService } from '@/services/orderService';
 export const useDriverLocationSync = () => {
     const { currentOrder, driverLocation, isOnDuty } = useAppStore();
     const lastUpdateRef = useRef<number>(0);
-    const UPDATE_INTERVAL = 3000; // Mise à jour toutes les 3 secondes (Temps réel fluide)
+    const locationRef = useRef(driverLocation);
+    const orderRef = useRef(currentOrder);
+    const UPDATE_INTERVAL = 3000; // Synchronisation toutes les 3 secondes
+
+    // Update refs whenever the store values change
+    useEffect(() => {
+        locationRef.current = driverLocation;
+        orderRef.current = currentOrder;
+    }, [driverLocation, currentOrder]);
 
     useEffect(() => {
-        // Ne synchroniser que si le chauffeur est en mission
-        if (!currentOrder || !isOnDuty) {
-            return;
-        }
+        // Ne démarrer le cycle que si le chauffeur est en mission
+        if (!isOnDuty) return;
 
         const syncLocation = async () => {
             const now = Date.now();
+            const activeOrder = orderRef.current;
+            const currentLoc = locationRef.current;
+            const { user } = useAppStore.getState();
+
+            // S'assurer que les coordonnées sont valides
+            if (!currentLoc || (currentLoc.lat === 0 && currentLoc.lng === 0)) return;
 
             // Éviter les mises à jour trop fréquentes
-            if (now - lastUpdateRef.current < UPDATE_INTERVAL) {
+            if (now - lastUpdateRef.current < UPDATE_INTERVAL - 500) {
                 return;
             }
 
             try {
-                console.log('📍 [LocationSync] Synchronisation position chauffeur...');
+                const promises = [];
 
-                await orderService.updateStatusWithLocation(
-                    currentOrder.id,
-                    currentOrder.status === 'accepted' ? 'driver_accepted' : 'in_progress',
-                    driverLocation,
-                    {
-                        // Pas de changement de statut, juste mise à jour de position
-                        last_location_update: new Date().toISOString()
-                    }
-                );
+                // 1. Mise à jour spécifique à la mission active (si présente)
+                // NOTE: Désactivé car driver_current_lat/lng n'existent pas dans orders
+                // La localisation est déjà mise à jour dans driver_locations (étape 2)
+                /*
+                if (activeOrder) {
+                    let sbStatus = activeOrder.status as string;
+                    if (activeOrder.status === 'accepted') sbStatus = 'driver_accepted';
+                    if (activeOrder.status === 'completed') sbStatus = 'delivered';
+
+                    promises.push(
+                        orderService.updateStatusWithLocation(
+                            activeOrder.id,
+                            sbStatus,
+                            currentLoc,
+                            { last_location_update: new Date().toISOString() }
+                        )
+                    );
+                }
+                */
+
+                // 2. MISE À JOUR GLOBALE (Indispensable pour la Live Map de l'admin)
+                if (user) {
+                    promises.push(
+                        driverService.updateLocation(
+                            user.id,
+                            currentLoc.lat,
+                            currentLoc.lng,
+                            activeOrder?.id
+                        )
+                    );
+                }
+
+                await Promise.all(promises);
 
                 lastUpdateRef.current = now;
-                console.log('✅ [LocationSync] Position synchronisée avec succès');
+                console.log('✅ [LocationSync] Position globale et mission synchronisées');
             } catch (error) {
                 console.error('❌ [LocationSync] Erreur synchronisation:', error);
             }
         };
 
-        // Synchroniser immédiatement puis toutes les 10 secondes
-        syncLocation();
         const interval = setInterval(syncLocation, UPDATE_INTERVAL);
+        syncLocation();
 
         return () => clearInterval(interval);
-    }, [currentOrder, driverLocation, isOnDuty]);
+    }, [isOnDuty]);
 };
 
 /**

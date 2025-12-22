@@ -110,8 +110,8 @@ export const ProofOfDeliveryDrawer = ({ isOpen, onClose, onConfirm }: ProofOfDel
 
     return (
         <Drawer open={isOpen} onOpenChange={(o) => !o && handleClose()}>
-            <DrawerContent>
-                <div className="mx-auto w-full max-w-sm">
+            <DrawerContent className="max-h-[90vh] overflow-y-auto">
+                <div className="mx-auto w-full max-w-sm pb-8">
 
                     <DrawerHeader className="text-left">
                         <DrawerTitle>Preuve de livraison</DrawerTitle>

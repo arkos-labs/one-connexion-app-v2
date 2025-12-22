@@ -21,13 +21,16 @@ export interface SupabaseOrder {
 
 export const mapSupabaseToOrder = (so: SupabaseOrder): Order => {
     // Map Supabase status to App status
-    let status: Order['status'] = 'pending';
+    console.log(`🔍 [mapSupabaseToOrder] Statut brut reçu:`, so.status, typeof so.status);
+
+    let status: Order['status'] = 'cancelled'; // Par défaut
     if (so.status === 'driver_accepted') status = 'accepted';
     else if (so.status === 'arrived_pickup') status = 'arrived_pickup';
     else if (so.status === 'in_progress') status = 'in_progress';
     else if (so.status === 'delivered') status = 'completed';
     else if (so.status === 'cancelled') status = 'cancelled';
-    else if (so.status === 'assigned' || so.status === 'pending_acceptance') status = 'pending';
+    else if (so.status === 'pending_acceptance' || so.status === 'dispatched') status = 'pending';
+    else status = 'assigned'; // Statut neutre qui ne déclenche pas la modale
 
     return {
         id: so.id,
@@ -67,15 +70,11 @@ export const orderService = {
             .select('*');
 
         if (driverId) {
-            // Si un ID chauffeur est fourni, on cherche :
-            // 1. Les commandes SANS chauffeur (pending_acceptance)
-            // 2. OU les commandes assignées à CE chauffeur (status=assigned/pending_acceptance)
-            query = query.or(`and(status.eq.pending_acceptance,driver_id.is.null),and(driver_id.eq.${driverId},status.in.(assigned,pending_acceptance))`);
+            // STRICT DISPATCH MODE: Seules les commandes assignées spécifiquement à ce chauffeur
+            query = query.or(`and(driver_id.eq.${driverId},status.in.(assigned,dispatched,pending_acceptance))`);
         } else {
-            // Sinon comportement par défaut (seulement les sans chauffeur)
-            query = query
-                .or('status.eq.pending_acceptance,status.eq.assigned')
-                .is('driver_id', null);
+            // Si pas d'ID chauffeur, on ne retourne rien par sécurité
+            return [];
         }
 
         const { data, error } = await query;
@@ -89,7 +88,7 @@ export const orderService = {
             .from('orders')
             .select('*')
             .eq('driver_id', driverId)
-            .in('status', ['driver_accepted', 'in_progress'])
+            .in('status', ['driver_accepted', 'arrived_pickup', 'in_progress'])
             .single();
 
         if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows found"
@@ -116,20 +115,43 @@ export const orderService = {
             additionalData
         });
 
-        const { data, error } = await supabase
-            .from('orders')
-            .update(updateData)
-            .eq('id', orderId)
-            .select()
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from('orders')
+                .update(updateData)
+                .eq('id', orderId)
+                .select()
+                .single();
 
-        if (error) {
-            console.error(`❌ [OrderService] Erreur mise à jour commande ${orderId}:`, error);
+            if (error) {
+                // RLS Fallback (Error 406, 401, 42501)
+                if (error.code === '406' || error.code === '42501' || error.message?.includes('401') || error.message?.includes('Permission denied')) {
+                    console.warn(`⚠️ [OrderService] Erreur permission RLS (${error.code}) sur updateStatus, tentative sans select...`);
+                    const { error: retryError } = await supabase
+                        .from('orders')
+                        .update(updateData)
+                        .eq('id', orderId);
+
+                    if (retryError) throw retryError;
+
+                    // Retourner un objet simulé
+                    return {
+                        id: orderId,
+                        status,
+                        ...additionalData,
+                        updated_at: timestamp,
+                        pickup_lat: 0, pickup_lng: 0, delivery_lat: 0, delivery_lng: 0
+                    } as any;
+                }
+                throw error;
+            }
+
+            console.log(`✅ [OrderService] Commande ${orderId} mise à jour avec succès`);
+            return mapSupabaseToOrder(data as SupabaseOrder);
+        } catch (error) {
+            console.error(`❌ [OrderService] Erreur updateStatus pour ${orderId}:`, error);
             throw error;
         }
-
-        console.log(`✅ [OrderService] Commande ${orderId} mise à jour avec succès`);
-        return mapSupabaseToOrder(data as SupabaseOrder);
     },
 
     /**
@@ -147,8 +169,6 @@ export const orderService = {
         const updateData = {
             status,
             ...additionalData,
-            driver_current_lat: driverLocation.lat,
-            driver_current_lng: driverLocation.lng,
             updated_at: timestamp
         };
 
@@ -157,25 +177,54 @@ export const orderService = {
             location: driverLocation,
             timestamp
         });
+        console.log(`🔍 [OrderService] updateData complet:`, updateData);
 
-        const { data, error } = await supabase
-            .from('orders')
-            .update(updateData)
-            .eq('id', orderId)
-            .select()
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from('orders')
+                .update(updateData)
+                .eq('id', orderId)
+                .select()
+                .single();
 
-        if (error) {
+            if (error) {
+                // RLS Fallback
+                if (error.code === '406' || error.code === '42501' || error.message?.includes('401') || error.message?.includes('Permission denied')) {
+                    console.warn(`⚠️ [OrderService] Erreur permission RLS (${error.code}) sur update+loc, continuation sans select...`);
+                    const { error: retryError } = await supabase
+                        .from('orders')
+                        .update(updateData)
+                        .eq('id', orderId);
+
+                    if (retryError) throw retryError;
+
+                    // Retourner un objet simulé cohérent
+                    return {
+                        id: orderId,
+                        status,
+                        ...updateData,
+                        pickup_lat: 0, pickup_lng: 0, delivery_lat: 0, delivery_lng: 0 // Champs techniques requis par map
+                    } as any;
+                }
+                throw error;
+            }
+
+            console.log(`🔍 [OrderService] Data brute retournée par Supabase:`, data);
+            console.log(`🔍 [OrderService] Type de data:`, typeof data, Array.isArray(data));
+            console.log(`✅ [OrderService] Position chauffeur mise à jour pour commande ${orderId}`);
+            return mapSupabaseToOrder(data as SupabaseOrder);
+        } catch (error) {
             console.error(`❌ [OrderService] Erreur mise à jour avec localisation:`, error);
             throw error;
         }
-
-        console.log(`✅ [OrderService] Position chauffeur mise à jour pour commande ${orderId}`);
-        return mapSupabaseToOrder(data as SupabaseOrder);
     },
 
     subscribeToOrders(callback: (order: Order) => void) {
         console.log('🔔 [OrderService] Abonnement aux nouvelles commandes...');
+
+        // Blacklist locale pour éviter le spam après refus
+        const refusedOrders = new Map<string, number>(); // orderId -> timestamp du refus
+        const REFUSAL_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 
         return supabase
             .channel('orders_channel')
@@ -185,16 +234,48 @@ export const orderService = {
                 table: 'orders',
                 // On enlève le filtre status=eq.pending_acceptance pour recevoir AUSSI les commandes 'assigned'
             }, (payload) => {
+                const newOrder = mapSupabaseToOrder(payload.new as SupabaseOrder);
+
+                // Vérifier si cette commande est en blacklist
+                const refusalTime = refusedOrders.get(newOrder.id);
+                if (refusalTime) {
+                    const elapsed = Date.now() - refusalTime;
+                    if (elapsed < REFUSAL_COOLDOWN) {
+                        console.log(`🚫 [OrderService] Commande ${newOrder.id} ignorée (refusée il y a ${Math.round(elapsed / 1000)}s)`);
+                        return; // Ignorer cette commande
+                    } else {
+                        // Cooldown expiré, retirer de la blacklist
+                        refusedOrders.delete(newOrder.id);
+                    }
+                }
+
                 console.log('📥 [OrderService] Nouvelle commande reçue:', payload.new);
-                callback(mapSupabaseToOrder(payload.new as SupabaseOrder));
+                callback(newOrder);
             })
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'orders'
             }, (payload) => {
+                const updatedOrder = mapSupabaseToOrder(payload.new as SupabaseOrder);
+
+                // Note: La blacklist est maintenant gérée dans orderSlice.ts
+
+                // Vérifier si cette commande est en blacklist
+                const refusalTime = refusedOrders.get(updatedOrder.id);
+                if (refusalTime) {
+                    const elapsed = Date.now() - refusalTime;
+                    if (elapsed < REFUSAL_COOLDOWN) {
+                        console.log(`🚫 [OrderService] Mise à jour ignorée pour commande ${updatedOrder.id} (refusée il y a ${Math.round(elapsed / 1000)}s)`);
+                        return; // Ignorer cette mise à jour
+                    } else {
+                        // Cooldown expiré, retirer de la blacklist
+                        refusedOrders.delete(updatedOrder.id);
+                    }
+                }
+
                 console.log('🔄 [OrderService] Commande mise à jour:', payload.new);
-                callback(mapSupabaseToOrder(payload.new as SupabaseOrder));
+                callback(updatedOrder);
             })
             .subscribe((status) => {
                 console.log('📡 [OrderService] Statut abonnement Realtime:', status);
@@ -208,23 +289,41 @@ export const orderService = {
     async rejectOrderAssignment(orderId: string, driverId: string) {
         console.log(`🚫 [OrderService] Rejet de la commande ${orderId} par le chauffeur ${driverId}`);
 
+        // Utiliser la fonction RPC qui bypass RLS de manière sécurisée
         const { data, error } = await supabase
-            .from('orders')
-            .update({
-                driver_id: null,
-                status: 'pending_acceptance', // Retour au pool ou statut spécifique 'rejected_by_driver'
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', orderId)
-            .select()
-            .single();
+            .rpc('refuse_order', { order_id_param: orderId });
 
         if (error) {
             console.error(`❌ [OrderService] Erreur rejet commande:`, error);
             throw error;
         }
 
-        console.log(`✅ [OrderService] Commande rejetée avec succès`);
-        return mapSupabaseToOrder(data as SupabaseOrder);
+        // Créer un événement de refus pour l'admin
+        try {
+            await supabase
+                .from('order_events')
+                .insert({
+                    order_id: orderId,
+                    event_type: 'driver_declined',
+                    description: `Course refusée par le chauffeur`,
+                    actor_type: 'driver',
+                    actor_id: driverId,
+                    metadata: {
+                        refused_at: new Date().toISOString(),
+                    }
+                });
+        } catch (eventError) {
+            console.warn('⚠️ [OrderService] Impossible de créer l\'événement de refus:', eventError);
+        }
+
+        console.log(`✅ [OrderService] Commande rejetée avec succès via RPC`);
+
+        // Convertir le résultat JSON en Order
+        return {
+            id: data.id,
+            reference: data.reference,
+            status: data.status,
+            assignedDriverId: data.driver_id
+        } as any; // Simplification pour le retour
     }
 };
