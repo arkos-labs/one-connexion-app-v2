@@ -151,14 +151,21 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
               </span>
               <span className="text-sm text-muted-foreground mt-1 flex items-center gap-1 font-medium">
                 <Navigation className="h-4 w-4" />
-                {distanceToTarget > 1000
-                  ? `${(distanceToTarget / 1000).toFixed(1)} km`
-                  : `${Math.round(distanceToTarget)} m`}
+                {(targetLocation.lat === 0 && targetLocation.lng === 0) ? (
+                  <span>Distance inconnue</span>
+                ) : distanceToTarget > 1000000 ? ( // > 1000km implies invalid/bugged calc (e.g. Null Island)
+                  <span>Distance inconnue</span>
+                ) : distanceToTarget > 1000 ? (
+                  `${(distanceToTarget / 1000).toFixed(1)} km`
+                ) : (
+                  `${Math.round(distanceToTarget)} m`
+                )}
               </span>
             </div>
           </div>
           <Badge variant="outline" className="bg-background/50 backdrop-blur border-border/50 h-8 text-sm px-3">
-            <Clock className="mr-1.5 h-4 w-4" /> 12 min
+            <Clock className="mr-1.5 h-4 w-4" />
+            {(targetLocation.lat === 0 && targetLocation.lng === 0) ? "--" : "12 min"}
           </Badge>
         </div>
 
