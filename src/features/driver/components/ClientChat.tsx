@@ -59,7 +59,10 @@ export const ClientChat = ({ isOpen, onClose }: ClientChatProps) => {
                 filter: `thread_id=eq.${currentThread.id}`
             }, (payload) => {
                 const newMsg = payload.new as ChatMessage;
-                setMessages(prev => [...prev, newMsg]);
+                setMessages(prev => {
+                    if (prev.some(m => m.id === newMsg.id)) return prev;
+                    return [...prev, newMsg];
+                });
 
                 // Marquer comme lu si c'est un message admin
                 if (newMsg.sender_type === 'admin') {
@@ -97,6 +100,20 @@ export const ClientChat = ({ isOpen, onClose }: ClientChatProps) => {
         const msgContent = text.trim();
         setInputText(""); // Optimistic clear
 
+        const tempId = 'temp-' + Date.now();
+        // @ts-ignore
+        const optimisticMsg: ChatMessage = {
+            id: tempId,
+            thread_id: currentThread?.id || 'temp-thread',
+            driver_id: user.id,
+            sender_type: 'driver',
+            content: msgContent,
+            is_read: false,
+            created_at: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, optimisticMsg]);
+
         try {
             let threadId = currentThread?.id;
 
@@ -107,8 +124,12 @@ export const ClientChat = ({ isOpen, onClose }: ClientChatProps) => {
                 setCurrentThread(newThread);
             }
 
-            await chatService.sendMessage(threadId!, user.id, msgContent);
-            // Le message reviendra via Realtime, mais on peut ajouter optimiste si besoin
+            const realMsg = await chatService.sendMessage(threadId!, user.id, msgContent);
+
+            // Replace optimistic with real
+            // @ts-ignore
+            setMessages(prev => prev.map(m => m.id === tempId ? realMsg : m));
+
         } catch (error) {
             console.error("Failed to send message", error);
             toast({
@@ -117,6 +138,7 @@ export const ClientChat = ({ isOpen, onClose }: ClientChatProps) => {
                 variant: "destructive"
             });
             setInputText(msgContent); // Restore text on error
+            setMessages(prev => prev.filter(m => m.id !== tempId));
         }
     };
 
