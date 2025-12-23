@@ -4,7 +4,7 @@ import { useAppStore } from "@/stores/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Lock, Mail, Eye, EyeOff, ChevronRight, Zap } from "lucide-react";
+import { Loader2, Lock, Mail, Eye, EyeOff, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 const Login = () => {
@@ -135,25 +135,7 @@ const Login = () => {
                                 )}
                             </Button>
 
-                            {/* BOUTON DÉMO / SANS AUTH */}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                    setUser({
-                                        id: "demo-id",
-                                        email: "chauffeur@demo.com",
-                                        fullName: "Chauffeur Démo",
-                                        role: "driver"
-                                    });
-                                    toast.success("Mode Démo activé");
-                                    navigate("/driver");
-                                }}
-                                className="w-full h-12 border-dashed border-2 hover:bg-secondary/50 text-muted-foreground font-bold"
-                            >
-                                <Zap className="mr-2 h-4 w-4 text-yellow-500" />
-                                Accès Rapide (Mode Démo)
-                            </Button>
+
                         </div>
                     </form>
 
