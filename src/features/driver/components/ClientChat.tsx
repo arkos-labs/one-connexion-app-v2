@@ -179,7 +179,7 @@ export const ClientChat = ({ isOpen, onClose }: ClientChatProps) => {
                                         <div
                                             className={`px-4 py-3 text-sm shadow-sm ${isMe
                                                 ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
-                                                : 'bg-white dark:bg-zinc-800 border border-border rounded-2xl rounded-tl-sm'
+                                                : 'bg-white dark:bg-zinc-800 border border-border rounded-2xl rounded-tl-sm text-zinc-800 dark:text-zinc-100'
                                                 }`}
                                         >
                                             <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
