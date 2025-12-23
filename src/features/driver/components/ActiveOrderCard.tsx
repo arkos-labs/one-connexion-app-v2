@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, Navigation, MapPin, User, Clock, CheckCircle, XCircle, MoreVertical, MessageSquare, Headset, ChevronDown, ChevronUp, Lock, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useAppPreferences } from "@/hooks/useAppPreferences";
 import { useAppStore } from "@/stores/useAppStore";
 import { cn } from "@/lib/utils";
 import { ProofOfDeliveryDrawer } from "./ProofOfDeliveryDrawer";
+import { locationService } from "@/services/locationService";
 
 // Utilitaires de distance simple (Haversine simplifié)
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -50,13 +51,45 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
 
   const targetLocation = isPickupPhase ? order.pickupLocation : order.dropoffLocation;
 
+  /* ---------------------------------------------------------------------------
+   * AUTO-FIX: Geocoding on client side if order has missing coordinates (0,0)
+   * --------------------------------------------------------------------------- */
+  const [fixedTargetLocation, setFixedTargetLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
+
+  useEffect(() => {
+    const fixMissingCoordinates = async () => {
+      // If coordinates are invalid (0,0) but we have an address string
+      if (targetLocation.lat === 0 && targetLocation.lng === 0 && targetLocation.address) {
+        console.warn("⚠️ Coordinates missing for this order, attempting to geocode on device...", targetLocation.address);
+        try {
+          const coords = await locationService.geocodeAddress(targetLocation.address);
+          if (coords) {
+            console.log("✅ Geocoding successful:", coords);
+            setFixedTargetLocation({ ...coords, address: targetLocation.address });
+          }
+        } catch (err) {
+          console.error("❌ Client-side geocoding failed", err);
+        }
+      } else {
+        // Reset if we switch orders and it's valid
+        setFixedTargetLocation(null);
+      }
+    };
+
+    fixMissingCoordinates();
+  }, [targetLocation.address, targetLocation.lat, targetLocation.lng]);
+
+  // Use fixed location if available, otherwise original
+  const effectiveTarget = fixedTargetLocation || targetLocation;
+
   // Calcul de distance pour validation (Seuil 200m)
   const distanceToTarget = useMemo(() => {
+    // If we still have 0,0 even after retry, distance remains huge/invalid
     return calculateDistance(
       driverLocation.lat, driverLocation.lng,
-      targetLocation.lat, targetLocation.lng
+      effectiveTarget.lat, effectiveTarget.lng
     );
-  }, [driverLocation, targetLocation]);
+  }, [driverLocation, effectiveTarget]);
 
   const isNearby = forceNearby || distanceToTarget < 200; // 200 mètres OU mode forcé
 
@@ -151,7 +184,7 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
               </span>
               <span className="text-sm text-muted-foreground mt-1 flex items-center gap-1 font-medium">
                 <Navigation className="h-4 w-4" />
-                {(targetLocation.lat === 0 && targetLocation.lng === 0) ? (
+                {(effectiveTarget.lat === 0 && effectiveTarget.lng === 0) ? (
                   <span>Distance inconnue</span>
                 ) : distanceToTarget > 1000000 ? ( // > 1000km implies invalid/bugged calc (e.g. Null Island)
                   <span>Distance inconnue</span>
@@ -165,7 +198,7 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
           </div>
           <Badge variant="outline" className="bg-background/50 backdrop-blur border-border/50 h-8 text-sm px-3">
             <Clock className="mr-1.5 h-4 w-4" />
-            {(targetLocation.lat === 0 && targetLocation.lng === 0) ? "--" : "12 min"}
+            {(effectiveTarget.lat === 0 && effectiveTarget.lng === 0) ? "--" : "12 min"}
           </Badge>
         </div>
 
@@ -205,7 +238,7 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
                 <div className="flex items-start gap-1.5">
                   <MapPin className={cn("h-4 w-4 mt-0.5 shrink-0", isPickupPhase ? "text-blue-500" : "text-green-500")} />
                   <p className="font-medium text-sm leading-tight truncate">
-                    {targetLocation.address}
+                    {effectiveTarget.address}
                   </p>
                 </div>
               </div>
@@ -214,7 +247,7 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
                 <Button
                   size="icon"
                   className="h-9 w-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shrink-0"
-                  onClick={() => openGPS(targetLocation.lat, targetLocation.lng)}
+                  onClick={() => openGPS(effectiveTarget.lat, effectiveTarget.lng)}
                 >
                   <Navigation className="h-4 w-4" />
                 </Button>
