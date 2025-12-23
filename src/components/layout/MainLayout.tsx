@@ -9,6 +9,7 @@ import { Capacitor } from "@capacitor/core";
 // --- IMPORTS CRITIQUES POUR LES COMMANDES ---
 import { NewOrderModal } from "@/features/driver/components/NewOrderModal";
 import { useIncomingOrderAlert } from "@/hooks/useIncomingOrderAlert";
+import { useMessageNotifications } from "@/hooks/useMessageNotifications";
 import { useAppStore } from "@/stores/useAppStore";
 
 export function MainLayout({ children }: { children?: React.ReactNode }) {
@@ -16,6 +17,8 @@ export function MainLayout({ children }: { children?: React.ReactNode }) {
 
   // 1. Activer l'écoute des commandes GLOBALEMENT
   useIncomingOrderAlert();
+  // 2. Activer les notifications de messages
+  useMessageNotifications();
 
   const currentOrder = useAppStore(state => state.currentOrder);
   const orders = useAppStore(state => state.orders);
