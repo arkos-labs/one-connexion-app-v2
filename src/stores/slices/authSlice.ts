@@ -60,6 +60,13 @@ export const createAuthSlice: StateCreator<
                 avatarUrl: undefined // Can be added later
             };
 
+            // SECURITY CHECK: Enforce Driver Role
+            const userRole = user.role as string;
+            if (userRole !== 'driver' && userRole !== 'chauffeur') {
+                await supabase.auth.signOut();
+                throw new Error("Accès refusé. Ce compte n'est pas un compte chauffeur. Veuillez utiliser le site web pour les clients.");
+            }
+
             set({
                 user,
                 isAuthenticated: true,
