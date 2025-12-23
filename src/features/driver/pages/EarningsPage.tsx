@@ -50,7 +50,12 @@ export const EarningsPage = () => {
             const date = new Date(ride.createdAt);
             const dayName = days[date.getDay()];
             if (dataMap.has(dayName)) {
-                dataMap.set(dayName, dataMap.get(dayName)! + (ride.priceInCents / 100));
+                // Règle des 40% pour le graphique : Le chauffeur ne touche que 40% du prix total de la course
+                // priceInCents est le prix TOTAL client (ex: 825 pour 8.25€)
+                // Donc on calcule : 825 * 0.4 = 330 cents (3.30€)
+                // Puis conversion en Euros pour le chart : 330 / 100 = 3.3
+                const netEarnings = (ride.priceInCents * 0.4) / 100;
+                dataMap.set(dayName, dataMap.get(dayName)! + netEarnings);
             }
         });
 
@@ -77,7 +82,9 @@ export const EarningsPage = () => {
             const tableRows = history.map(ride => [
                 new Date(ride.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + new Date(ride.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
                 "#" + ride.id.slice(0, 8),
-                formatPrice(ride.priceInCents),
+                // CRITIQUE : Affichage du GAIN CHAUFFEUR (40%) et non du prix total client
+                // RAPPEL : ride.priceInCents = Prix Client Total
+                formatPrice((ride.priceInCents * 0.4)), // Gain Net (40%)
                 "Terminée"
             ]);
 
@@ -250,7 +257,7 @@ export const EarningsPage = () => {
                                                 </div>
                                             </div>
                                             <span className="font-bold text-sm text-green-500">
-                                                {formatPrice(ride.priceInCents)}
+                                                +{formatPrice(ride.priceInCents * 0.4)}
                                             </span>
                                         </div>
                                     ))

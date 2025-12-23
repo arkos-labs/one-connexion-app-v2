@@ -94,10 +94,12 @@ export const NewOrderModal = ({ order, onAccept, onReject }: NewOrderModalProps)
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Prix */}
+          {/* Prix - Affichage Uniquement du Gain Net Chauffeur (40% du prix client) */}
           <div className="text-center">
-            <span className="text-4xl font-extrabold text-primary">{(incomingOrder.price * 0.40).toFixed(2)} €</span>
-            <span className="text-sm text-muted-foreground ml-1">Net chauffeur</span>
+            <span className="text-4xl font-extrabold text-green-600">{(incomingOrder.price * 0.40).toFixed(2)} €</span>
+            <div className="flex items-center justify-center gap-2 mt-1">
+              <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest bg-secondary px-2 py-0.5 rounded">Gain Net</span>
+            </div>
           </div>
 
           {/* Trajet */}

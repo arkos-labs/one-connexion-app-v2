@@ -65,7 +65,12 @@ export const SupportPage = () => {
                             <h3 className="font-bold text-lg">Administratif</h3>
                             <p className="text-xs text-muted-foreground">Documents & Paie</p>
                         </div>
-                        <Button variant="outline" size="sm" className="w-full mt-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-2"
+                            onClick={() => window.location.href = "mailto:support@oneconnexion.com"}
+                        >
                             Nous écrire
                         </Button>
                     </CardContent>

@@ -91,6 +91,13 @@ export const DriverProfileSheet = ({ isOpen, onClose }: DriverProfileSheetProps)
                                         {vehicle?.plate}
                                     </div>
                                 </div>
+                                <Button
+                                    variant="link"
+                                    className="px-0 pt-2 h-auto text-xs text-primary"
+                                    onClick={() => window.location.href = "mailto:support@oneconnexion.com?subject=Modification Véhicule"}
+                                >
+                                    Demander une modification
+                                </Button>
                             </div>
                         </section>
 
