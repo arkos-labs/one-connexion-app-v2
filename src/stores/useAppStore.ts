@@ -67,7 +67,7 @@ export const useAppStore = create<AppStore>()(
        * Version for migration handling
        * Increment this when making breaking changes to the store structure
        */
-      version: 4,
+      version: 5,
 
       /**
        * Migration function for handling version upgrades
@@ -88,6 +88,11 @@ export const useAppStore = create<AppStore>()(
           delete (state as { driverLocation?: unknown }).driverLocation;
           delete (state as { orders?: unknown }).orders;
           delete (state as { earnings?: unknown }).earnings;
+        }
+
+        // Migration from v4 to v5: Remove "Carte VTC" from documents
+        if (version < 5 && state.documents) {
+          state.documents = state.documents.filter(doc => doc.id !== "2");
         }
 
         return state as AppStore;

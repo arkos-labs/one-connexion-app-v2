@@ -186,26 +186,6 @@ export const DriverMap = ({ activeOrder, driverLocation }: DriverMapProps) => {
                 )}
             </MapContainer>
 
-            {/* Bouton Recentrer Anti-Snap */}
-            <AnimatePresence>
-                {isUserInteracting && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        className="absolute top-4 left-1/2 -translate-x-1/2 z-[401]"
-                    >
-                        <Button
-                            onClick={handleRecenter}
-                            className="bg-zinc-900 text-white hover:bg-zinc-800 rounded-full py-6 px-8 shadow-2xl border border-white/10 gap-3"
-                        >
-                            <LocateFixed className="h-5 w-5 animate-pulse" />
-                            <span className="font-bold tracking-tight">Recentrer sur moi</span>
-                        </Button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
             {/* Attribution discrète */}
             <div className="absolute bottom-2 left-2 z-[400] text-[8px] text-muted-foreground opacity-50 bg-white/50 px-1 rounded">
                 © LocationIQ | © OpenStreetMap contributors

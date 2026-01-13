@@ -62,65 +62,77 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen w-full flex bg-background">
-            {/* CÔTÉ GAUCHE : Branding & Photo (Desktop) */}
-            <div className="hidden lg:flex w-1/2 bg-zinc-900 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-transparent to-purple-600/30 z-10" />
-                <img
-                    src="/assets/images/driver_register.png"
-                    alt="Devenir coursier"
-                    className="w-full h-full object-cover opacity-70 animate-pulse-slow"
-                />
-                <div className="absolute inset-0 bg-black/20 z-10" />
+        <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
 
-                <div className="absolute bottom-12 left-12 z-20 space-y-6">
-                    <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 max-w-md">
-                        <h2 className="text-4xl font-bold text-white mb-4">Rejoignez le Futur de la Livraison</h2>
-                        <ul className="space-y-3 text-zinc-100">
-                            <li className="flex items-center gap-3">
-                                <div className="h-2 w-2 rounded-full bg-blue-400" />
-                                <span>Gagnez jusqu'à 25€ / heure</span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <div className="h-2 w-2 rounded-full bg-blue-400" />
-                                <span>Liberté totale d'horaires</span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <div className="h-2 w-2 rounded-full bg-blue-400" />
-                                <span>Support technique 24/7</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
+            {/* Vagues dorées en arrière-plan */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <svg className="absolute bottom-0 right-0 w-full h-full opacity-20" viewBox="0 0 1440 800" preserveAspectRatio="none">
+                    <path
+                        fill="url(#gold-gradient)"
+                        d="M0,400 C320,300 420,500 720,400 C1020,300 1120,500 1440,400 L1440,800 L0,800 Z"
+                    />
+                    <defs>
+                        <linearGradient id="gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.3" />
+                            <stop offset="100%" stopColor="#FFD700" stopOpacity="0.1" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <svg className="absolute top-0 left-0 w-full h-full opacity-10" viewBox="0 0 1440 800" preserveAspectRatio="none">
+                    <path
+                        fill="url(#gold-gradient-2)"
+                        d="M0,200 C360,100 540,300 900,200 C1260,100 1380,300 1440,200 L1440,0 L0,0 Z"
+                    />
+                    <defs>
+                        <linearGradient id="gold-gradient-2" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#FFD700" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.1" />
+                        </linearGradient>
+                    </defs>
+                </svg>
             </div>
 
-            {/* CÔTÉ DROIT : Formulaire */}
-            <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12">
-                <div className="w-full max-w-md space-y-8">
+            {/* Container principal du formulaire */}
+            <div className="relative z-10 w-full max-w-md mx-4 my-8">
 
-                    {/* Header */}
-                    <div className="space-y-2">
-                        <Link
-                            to="/login"
-                            className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-4 group"
-                        >
-                            <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                            Retour à la connexion
-                        </Link>
-                        <h1 className="text-3xl font-bold tracking-tight">Devenir Partenaire</h1>
-                        <p className="text-muted-foreground">Remplissez vos informations pour commencer à livrer.</p>
+                {/* Card avec glassmorphism */}
+                <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl p-8 sm:p-10">
+
+                    {/* Bouton retour */}
+                    <Link
+                        to="/login"
+                        className="inline-flex items-center text-sm font-medium text-slate-400 hover:text-yellow-500 transition-colors mb-6 group"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                        Retour à la connexion
+                    </Link>
+
+                    {/* Titre */}
+                    <div className="mb-8">
+                        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                            Devenir Partenaire
+                        </h1>
+                        <p className="text-slate-400 text-sm">
+                            Remplissez vos informations pour commencer à livrer.
+                        </p>
                     </div>
 
+                    {/* Formulaire */}
                     <form onSubmit={handleRegister} className="space-y-5">
-                        {/* Nom Complet */}
+
+                        {/* Nom complet */}
                         <div className="space-y-2">
-                            <Label htmlFor="fullName">Nom complet</Label>
-                            <div className="relative">
-                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Label htmlFor="fullName" className="text-slate-300 text-sm font-medium">
+                                Nom complet
+                            </Label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <User className="h-5 w-5 text-slate-500 group-focus-within:text-yellow-500 transition-colors" />
+                                </div>
                                 <Input
                                     id="fullName"
                                     placeholder="Jean Dupont"
-                                    className="pl-10 h-12 bg-secondary/30"
+                                    className="pl-12 h-14 bg-slate-800/50 border-2 border-slate-700/50 text-white placeholder:text-slate-500 focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 rounded-2xl transition-all"
                                     value={formData.fullName}
                                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                                     required
@@ -128,16 +140,20 @@ const Register = () => {
                             </div>
                         </div>
 
-                        {/* Email */}
+                        {/* Email professionnel */}
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email professionnel</Label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Label htmlFor="email" className="text-slate-300 text-sm font-medium">
+                                Email professionnel
+                            </Label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Mail className="h-5 w-5 text-slate-500 group-focus-within:text-yellow-500 transition-colors" />
+                                </div>
                                 <Input
                                     id="email"
                                     type="email"
                                     placeholder="jean.dupont@exemple.fr"
-                                    className="pl-10 h-12 bg-secondary/30"
+                                    className="pl-12 h-14 bg-slate-800/50 border-2 border-slate-700/50 text-white placeholder:text-slate-500 focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 rounded-2xl transition-all"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     required
@@ -147,14 +163,18 @@ const Register = () => {
 
                         {/* Mot de passe */}
                         <div className="space-y-2">
-                            <Label htmlFor="password">Mot de passe</Label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Label htmlFor="password" className="text-slate-300 text-sm font-medium">
+                                Mot de passe
+                            </Label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-yellow-500 transition-colors" />
+                                </div>
                                 <Input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
-                                    className="pl-10 pr-10 h-12 bg-secondary/30"
+                                    className="pl-12 pr-12 h-14 bg-slate-800/50 border-2 border-slate-700/50 text-white placeholder:text-slate-500 focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 rounded-2xl transition-all"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     required
@@ -162,80 +182,85 @@ const Register = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-yellow-500 transition-colors"
                                 >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Type de Véhicule */}
-                        <div className="space-y-3">
-                            <Label>Type de véhicule</Label>
+                        {/* Sélection de véhicule */}
+                        <div className="space-y-3 pt-2">
                             <RadioGroup
                                 defaultValue="car"
-                                className="grid grid-cols-3 gap-4"
+                                className="grid grid-cols-3 gap-3"
                                 onValueChange={(val) => setFormData({ ...formData, vehicleType: val as any })}
                             >
+                                {/* Option Vélo */}
                                 <div>
                                     <RadioGroupItem value="bike" id="bike" className="peer sr-only" />
                                     <Label
                                         htmlFor="bike"
-                                        className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
+                                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-slate-700/50 bg-slate-800/30 p-4 hover:bg-slate-800/50 hover:border-slate-600 peer-data-[state=checked]:border-yellow-500 peer-data-[state=checked]:bg-yellow-500/10 cursor-pointer transition-all h-full group"
                                     >
-                                        <Bike className="mb-2 h-6 w-6" />
-                                        <span className="text-xs font-semibold">Vélo</span>
+                                        <div className="p-2.5 rounded-xl bg-slate-700/50 group-hover:bg-slate-700 peer-data-[state=checked]:bg-yellow-500/20 text-slate-300 peer-data-[state=checked]:text-yellow-500 transition-colors">
+                                            <Bike className="h-6 w-6" />
+                                        </div>
+                                        <span className="text-xs font-medium text-slate-300 peer-data-[state=checked]:text-yellow-500">Vélo</span>
                                     </Label>
                                 </div>
+
+                                {/* Option Scooter */}
                                 <div>
                                     <RadioGroupItem value="scooter" id="scooter" className="peer sr-only" />
                                     <Label
                                         htmlFor="scooter"
-                                        className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
+                                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-slate-700/50 bg-slate-800/30 p-4 hover:bg-slate-800/50 hover:border-slate-600 peer-data-[state=checked]:border-yellow-500 peer-data-[state=checked]:bg-yellow-500/10 cursor-pointer transition-all h-full group"
                                     >
-                                        <Zap className="mb-2 h-6 w-6" />
-                                        <span className="text-xs font-semibold">Scooter</span>
+                                        <div className="p-2.5 rounded-xl bg-slate-700/50 group-hover:bg-slate-700 peer-data-[state=checked]:bg-yellow-500/20 text-slate-300 peer-data-[state=checked]:text-yellow-500 transition-colors">
+                                            <Zap className="h-6 w-6" />
+                                        </div>
+                                        <span className="text-xs font-medium text-slate-300 peer-data-[state=checked]:text-yellow-500">Scooter</span>
                                     </Label>
                                 </div>
+
+                                {/* Option Voiture */}
                                 <div>
                                     <RadioGroupItem value="car" id="car" className="peer sr-only" />
                                     <Label
                                         htmlFor="car"
-                                        className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
+                                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-slate-700/50 bg-slate-800/30 p-4 hover:bg-slate-800/50 hover:border-slate-600 peer-data-[state=checked]:border-yellow-500 peer-data-[state=checked]:bg-yellow-500/10 cursor-pointer transition-all h-full group"
                                     >
-                                        <Car className="mb-2 h-6 w-6" />
-                                        <span className="text-xs font-semibold">Voiture</span>
+                                        <div className="p-2.5 rounded-xl bg-slate-700/50 group-hover:bg-slate-700 peer-data-[state=checked]:bg-yellow-500/20 text-slate-300 peer-data-[state=checked]:text-yellow-500 transition-colors">
+                                            <Car className="h-6 w-6" />
+                                        </div>
+                                        <span className="text-xs font-medium text-slate-300 peer-data-[state=checked]:text-yellow-500">Voiture</span>
                                     </Label>
                                 </div>
                             </RadioGroup>
                         </div>
 
-                        {/* Bouton Inscription */}
-                        <Button
-                            type="submit"
-                            className="w-full h-12 text-base shadow-xl shadow-primary/20 mt-2 transition-all hover:scale-[1.02]"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                    Création du compte...
-                                </>
-                            ) : (
-                                <>
-                                    Créer mon compte
-                                    <ChevronRight className="ml-2 h-5 w-5" />
-                                </>
-                            )}
-                        </Button>
+                        {/* Bouton de création de compte */}
+                        <div className="pt-4">
+                            <Button
+                                type="submit"
+                                className="w-full h-14 text-base font-semibold bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-500 hover:from-yellow-400 hover:via-yellow-500 hover:to-yellow-400 text-slate-900 shadow-lg shadow-yellow-500/30 rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] border-0"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                        Création en cours...
+                                    </>
+                                ) : (
+                                    <>
+                                        Créer mon compte
+                                        <ChevronRight className="ml-2 h-5 w-5" />
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </form>
-
-                    {/* Footer Termes */}
-                    <p className="text-center text-xs text-muted-foreground px-6">
-                        En vous inscrivant, vous acceptez nos{" "}
-                        <a href="#" className="underline hover:text-primary">Conditions Générales</a> et notre{" "}
-                        <a href="#" className="underline hover:text-primary">Politique de Confidentialité</a>.
-                    </p>
                 </div>
             </div>
         </div>

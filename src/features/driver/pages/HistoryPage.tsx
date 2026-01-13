@@ -1,26 +1,22 @@
 import { useAppStore } from "@/stores/useAppStore";
 import {
-    Calendar,
-    ChevronRight,
+    ArrowLeft,
     MapPin,
-    Clock,
-    CreditCard,
-    Search,
-    Filter,
-    ArrowLeft
+    Navigation,
+    User
 } from "lucide-react";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState } from "react";
 
 export const HistoryPage = () => {
     const navigate = useNavigate();
     const { history: rawHistory } = useAppStore();
-    const history = rawHistory || [];
+    const history = rawHistory;
+    const [activeFilter, setActiveFilter] = useState<'all' | 'completed' | 'early'>('completed');
 
     const formatPrice = (cents: number) => {
         return new Intl.NumberFormat('fr-FR', {
@@ -29,98 +25,141 @@ export const HistoryPage = () => {
         }).format(cents / 100);
     };
 
+    // Mock clients names
+    const clientNames = ["Mathis Dupont", "Sophie Martin", "Lucas Bernard", "Emma Dubois"];
+
     return (
-        <div className="flex flex-col h-full bg-background/50 backdrop-blur-xl">
-            {/* Header Sticky */}
-            <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/10 p-4">
-                <div className="flex items-center gap-4 mb-6">
+        <div className="flex flex-col h-full bg-slate-950">
+            {/* Header */}
+            <div className="sticky top-0 z-30 px-6 pt-8 pb-4 bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/50">
+                <div className="flex items-center justify-between mb-4">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate('/driver')}
-                        className="rounded-full hover:bg-secondary/80"
+                        className="rounded-xl hover:bg-slate-800"
                     >
-                        <ArrowLeft className="h-5 w-5" />
+                        <ArrowLeft className="h-5 w-5 text-white" />
                     </Button>
-                    <h1 className="text-2xl font-bold tracking-tight">Historique</h1>
+                    <h1 className="text-lg font-bold text-white">Historique des Courses</h1>
+                    <div className="w-10"></div> {/* Spacer */}
                 </div>
 
-                {/* Search & Filter Bar */}
-                <div className="flex gap-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Rechercher une course..."
-                            className="pl-9 bg-secondary/30 border-none rounded-xl"
-                        />
-                    </div>
-                    <Button variant="outline" size="icon" className="rounded-xl border-dashed">
-                        <Filter className="h-4 w-4" />
-                    </Button>
+                {/* Filtres */}
+                <div className="flex gap-2 justify-center">
+                    <button
+                        onClick={() => setActiveFilter('completed')}
+                        className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${activeFilter === 'completed'
+                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-slate-900'
+                                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700'
+                            }`}
+                    >
+                        Terminée
+                    </button>
+                    <button
+                        onClick={() => setActiveFilter('all')}
+                        className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${activeFilter === 'all'
+                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-slate-900'
+                                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700'
+                            }`}
+                    >
+                        Tous
+                    </button>
+                    <button
+                        onClick={() => setActiveFilter('early')}
+                        className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${activeFilter === 'early'
+                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-slate-900'
+                                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700'
+                            }`}
+                    >
+                        Tôt
+                    </button>
                 </div>
             </div>
 
-            <ScrollArea className="flex-1 px-4 py-6">
-                <div className="max-w-2xl mx-auto space-y-4">
+            <ScrollArea className="flex-1 px-6">
+                <div className="space-y-4 pt-6 pb-24">
+
                     {history.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                            <div className="h-20 w-20 rounded-full bg-secondary/50 flex items-center justify-center">
-                                <Clock className="h-10 w-10 text-muted-foreground" />
+                        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-3xl p-10 text-center">
+                            <div className="h-16 w-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <User className="h-6 w-6 text-slate-400" />
                             </div>
-                            <div>
-                                <h3 className="text-lg font-semibold">Aucune course terminée</h3>
-                                <p className="text-muted-foreground text-sm">
-                                    Vos courses terminées apparaîtront ici.
-                                </p>
-                            </div>
+                            <h3 className="font-semibold text-white">Aucune course</h3>
+                            <p className="text-slate-400 text-sm mt-1">Vous n'avez pas encore effectué de course.</p>
                         </div>
                     ) : (
-                        history.map((ride) => (
-                            <div
-                                key={ride.id}
-                                className="group relative bg-card/40 hover:bg-card/60 border border-border/10 rounded-2xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 active:scale-[0.98] cursor-pointer"
-                            >
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                            <Calendar className="h-4 w-4" />
+                        history.map((ride, idx) => {
+                            // Alternance de style : certaines cards ont un dégradé doré
+                            const hasGoldGradient = idx % 3 === 0;
+
+                            return (
+                                <div
+                                    key={ride.id || idx}
+                                    className={`relative rounded-3xl p-5 transition-all duration-300 hover:scale-[1.02] ${hasGoldGradient
+                                            ? 'bg-gradient-to-br from-yellow-900/30 via-yellow-800/20 to-slate-900/50 border-2 border-yellow-500/20'
+                                            : 'bg-slate-900/50 backdrop-blur-sm border-2 border-slate-800/50'
+                                        }`}
+                                >
+                                    {/* Top Row: Client & Prix */}
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex gap-3">
+                                            <Avatar className="h-12 w-12 border-2 border-slate-700">
+                                                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${idx}`} />
+                                                <AvatarFallback className="bg-slate-800 text-white font-bold">
+                                                    {clientNames[idx % clientNames.length].split(' ').map(n => n[0]).join('')}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <h4 className="font-bold text-sm text-white">{clientNames[idx % clientNames.length]}</h4>
+                                                <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                                                    <span>{format(new Date(ride.createdAt), "dd/MM/yyyy")}</span>
+                                                    <span>•</span>
+                                                    <span>{format(new Date(ride.createdAt), "HH:mm")}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <span className="font-semibold text-sm">
-                                            {format(new Date(ride.createdAt), "dd MMMM yyyy", { locale: fr })}
-                                        </span>
-                                    </div>
-                                    <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-none font-bold">
-                                        {formatPrice(ride.priceInCents)}
-                                    </Badge>
-                                </div>
-
-                                <div className="space-y-3 relative pl-4 border-l-2 border-dashed border-border/30 ml-2">
-                                    <div className="relative">
-                                        <div className="absolute -left-[23px] top-1 h-3 w-3 rounded-full bg-primary border-4 border-background shadow-sm" />
-                                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Départ</p>
-                                        <p className="text-sm font-medium line-clamp-1">{ride.pickupAddress}</p>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">
+                                                {formatPrice(ride.priceInCents)}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-slate-900 bg-gradient-to-r from-yellow-400 to-yellow-500 px-3 py-1 rounded-full mt-1">
+                                                TERMINÉE
+                                            </span>
+                                        </div>
                                     </div>
 
-                                    <div className="relative pt-2">
-                                        <div className="absolute -left-[23px] top-3 h-3 w-3 rounded-full bg-yellow-500 border-4 border-background shadow-sm" />
-                                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Arrivée</p>
-                                        <p className="text-sm font-medium line-clamp-1">{ride.dropoffAddress}</p>
-                                    </div>
-                                </div>
+                                    {/* Route */}
+                                    <div className="space-y-3">
+                                        {/* Départ */}
+                                        <div className="flex items-start gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                                <MapPin className="h-4 w-4 text-blue-400" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mb-0.5">DÉPART</p>
+                                                <p className="text-sm font-medium text-white leading-tight line-clamp-1">
+                                                    {ride.pickupAddress}
+                                                </p>
+                                            </div>
+                                        </div>
 
-                                <div className="mt-4 pt-4 border-t border-border/10 flex items-center justify-between text-xs text-muted-foreground">
-                                    <div className="flex gap-4">
-                                        <span className="flex items-center gap-1.5 font-medium">
-                                            <Clock className="h-3 w-3" /> 14 min
-                                        </span>
-                                        <span className="flex items-center gap-1.5 font-medium">
-                                            <CreditCard className="h-3 w-3" /> {ride.paymentMethod === 'card' ? 'Carte' : 'Espèces'}
-                                        </span>
+                                        {/* Arrivée */}
+                                        <div className="flex items-start gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                                <Navigation className="h-4 w-4 text-emerald-400" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-0.5">ARRIVÉE</p>
+                                                <p className="text-sm font-medium text-white leading-tight line-clamp-1">
+                                                    {ride.dropoffAddress}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <ChevronRight className="h-4 w-4 opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </ScrollArea>

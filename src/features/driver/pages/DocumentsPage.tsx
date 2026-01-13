@@ -6,19 +6,16 @@ import {
     AlertCircle,
     Clock,
     Upload,
-    Plus,
-    ShieldCheck,
-    ChevronRight
+    AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 
 export const DocumentsPage = () => {
     const navigate = useNavigate();
-    const { documents, updateDocumentStatus } = useAppStore();
+    const { documents, updateDocumentStatus, driverStatus } = useAppStore();
 
     const handleUploadSimulation = (docId: string, docName: string) => {
         toast({
@@ -26,7 +23,6 @@ export const DocumentsPage = () => {
             description: `Chargement de "${docName}"`
         });
 
-        // Simulation d'un délai d'upload
         setTimeout(() => {
             updateDocumentStatus(docId, 'pending');
             toast({
@@ -41,147 +37,153 @@ export const DocumentsPage = () => {
         switch (status) {
             case 'verified':
                 return {
-                    icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
-                    label: 'Vérifié',
-                    color: 'bg-green-500/10 text-green-500',
+                    icon: <CheckCircle2 className="h-5 w-5 text-emerald-400" />,
+                    label: '✓ vérifié',
+                    textColor: 'text-emerald-400',
+                    borderColor: 'border-emerald-500/30',
+                    bgGradient: 'from-emerald-900/20 to-slate-900/50',
                     action: false
                 };
             case 'expired':
                 return {
-                    icon: <AlertCircle className="h-5 w-5 text-red-500" />,
-                    label: 'Expiré',
-                    color: 'bg-red-500/10 text-red-500',
+                    icon: <AlertCircle className="h-5 w-5 text-red-400" />,
+                    label: '⚠ expiré',
+                    textColor: 'text-red-400',
+                    borderColor: 'border-red-500/30',
+                    bgGradient: 'from-red-900/20 to-slate-900/50',
                     action: true
                 };
             case 'pending':
                 return {
-                    icon: <Clock className="h-5 w-5 text-orange-500" />,
-                    label: 'En attente',
-                    color: 'bg-orange-500/10 text-orange-500',
+                    icon: <Clock className="h-5 w-5 text-orange-400" />,
+                    label: '⏳ en attente',
+                    textColor: 'text-orange-400',
+                    borderColor: 'border-orange-500/30',
+                    bgGradient: 'from-orange-900/20 to-slate-900/50',
                     action: false
                 };
             default:
                 return {
-                    icon: <AlertCircle className="h-5 w-5 text-muted-foreground" />,
-                    label: 'Manquant',
-                    color: 'bg-secondary text-muted-foreground',
+                    icon: <AlertCircle className="h-5 w-5 text-slate-400" />,
+                    label: 'manquant',
+                    textColor: 'text-slate-400',
+                    borderColor: 'border-slate-700/50',
+                    bgGradient: 'from-slate-900/50 to-slate-900/50',
                     action: true
                 };
         }
     };
 
     const allVerified = documents.every(d => d.status === 'verified');
+    const hasExpired = documents.some(d => d.status === 'expired');
 
     return (
-        <div className="flex flex-col h-full bg-background/50 backdrop-blur-xl">
+        <div className="flex flex-col h-full bg-slate-950">
             {/* Header */}
-            <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/10 p-4">
-                <div className="flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => navigate('/driver')}
-                        className="rounded-full"
-                    >
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
+            <div className="sticky top-0 z-30 px-6 pt-8 pb-4 bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/50">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate('/driver')}
+                            className="rounded-xl hover:bg-slate-800"
+                        >
+                            <ArrowLeft className="h-5 w-5 text-white" />
+                        </Button>
+                        <h1 className="text-lg font-bold text-white">Mes Documents</h1>
+                    </div>
+                    {/* Badge HORS LIGNE */}
+                    <div className={`text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 ${driverStatus === 'online'
+                            ? 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-slate-900'
+                            : 'bg-slate-800/50 text-slate-400'
+                        }`}>
+                        <div className="h-2 w-2 rounded-full bg-slate-900 animate-pulse"></div>
+                        {driverStatus === 'online' ? 'EN LIGNE' : 'HORS LIGNE'}
+                    </div>
                 </div>
             </div>
 
-            <ScrollArea className="flex-1 px-4 py-6">
-                <div className="max-w-3xl mx-auto space-y-6">
+            <ScrollArea className="flex-1 px-6">
+                <div className="space-y-6 pt-6 pb-24">
 
-                    {/* Status Header */}
-                    <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all duration-500 ${allVerified ? 'bg-green-500/5 border-green-500/20' : 'bg-orange-500/5 border-orange-500/20'
-                        }`}>
-                        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-transform hover:scale-110 ${allVerified ? 'bg-green-500/20 text-green-500' : 'bg-orange-500/20 text-orange-500'
-                            }`}>
-                            <ShieldCheck className="h-8 w-8" />
+                    {/* Alerte Action Requise */}
+                    {!allVerified && (
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-yellow-900/40 via-orange-900/30 to-slate-900/50 border-2 border-yellow-500/30 p-5 shadow-xl">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20 shrink-0">
+                                    <AlertTriangle className="h-6 w-6 text-slate-900" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="font-bold text-white text-sm mb-1">Action requise</h3>
+                                    <p className="text-xs text-slate-300">
+                                        Certains pièces doivent être mises à jour ou sont en attente
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex-1">
-                            <h2 className="text-lg font-bold">
-                                {allVerified ? 'Compte Vérifié' : 'Action requise'}
-                            </h2>
-                            <p className="text-sm text-muted-foreground">
-                                {allVerified
-                                    ? 'Tous vos documents sont à jour. Vous pouvez rouler sereinement.'
-                                    : 'Certains documents ont besoin de votre attention.'}
-                            </p>
-                        </div>
-                        {allVerified && (
-                            <Badge className="bg-green-500 animate-pulse">ACTIF</Badge>
-                        )}
-                    </div>
+                    )}
 
-                    <div className="space-y-4 pt-4">
-                        <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-2">Liste des pièces</h3>
+                    {/* Label */}
+                    <h3 className="font-bold text-xs uppercase tracking-widest text-slate-400 px-2">
+                        LISTE DES PIÈCES
+                    </h3>
 
-                        <div className="grid gap-3">
-                            {documents.map((doc) => {
-                                const config = getStatusConfig(doc.status);
-                                return (
-                                    <div
-                                        key={doc.id}
-                                        className="group bg-card/30 hover:bg-card/50 border border-border/10 rounded-2xl p-4 flex items-center justify-between transition-all"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 rounded-xl bg-background border border-border/50 flex items-center justify-center">
-                                                <FileText className="h-6 w-6 text-muted-foreground/50 group-hover:text-primary transition-colors" />
+                    {/* Liste des Documents */}
+                    <div className="space-y-3">
+                        {documents.map((doc) => {
+                            const config = getStatusConfig(doc.status);
+                            return (
+                                <div
+                                    key={doc.id}
+                                    className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${config.bgGradient} border-2 ${config.borderColor} p-4 transition-all hover:scale-[1.02]`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${doc.status === 'verified' ? 'bg-emerald-500/20' :
+                                                    doc.status === 'expired' ? 'bg-red-500/20' :
+                                                        doc.status === 'pending' ? 'bg-orange-500/20' :
+                                                            'bg-slate-700/50'
+                                                }`}>
+                                                <FileText className={`h-5 w-5 ${doc.status === 'verified' ? 'text-emerald-400' :
+                                                        doc.status === 'expired' ? 'text-red-400' :
+                                                            doc.status === 'pending' ? 'text-orange-400' :
+                                                                'text-slate-400'
+                                                    }`} />
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-sm">{doc.name}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <Badge variant="secondary" className={`${config.color} border-none text-[10px] py-0 px-1.5 font-bold uppercase`}>
+                                            <div className="flex-1">
+                                                <p className="font-bold text-sm text-white">{doc.name}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className={`text-xs font-semibold ${config.textColor}`}>
                                                         {config.label}
-                                                    </Badge>
+                                                    </span>
                                                     {doc.expiryDate && (
-                                                        <span className="text-[10px] text-muted-foreground">
-                                                            Exp. le {doc.expiryDate}
-                                                        </span>
+                                                        <>
+                                                            <span className="text-slate-500">•</span>
+                                                            <span className="text-xs text-slate-400">
+                                                                Exp. le {doc.expiryDate}
+                                                            </span>
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-3">
-                                            {config.icon}
-                                            {config.action ? (
-                                                <Button
-                                                    size="icon"
-                                                    variant="secondary"
-                                                    className="h-8 w-8 rounded-full"
-                                                    onClick={() => handleUploadSimulation(doc.id, doc.name)}
-                                                >
-                                                    <Upload className="h-4 w-4" />
-                                                </Button>
-                                            ) : (
-                                                <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
-                                            )}
-                                        </div>
+                                        {/* Bouton Upload pour documents expirés */}
+                                        {config.action && (
+                                            <Button
+                                                size="sm"
+                                                onClick={() => handleUploadSimulation(doc.id, doc.name)}
+                                                className="h-9 px-4 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-slate-900 font-bold shadow-lg shadow-yellow-500/30"
+                                            >
+                                                <Upload className="h-4 w-4 mr-1" />
+                                                Uploader
+                                            </Button>
+                                        )}
                                     </div>
-                                );
-                            })}
-
-                            <Button
-                                variant="outline"
-                                className="w-full border-dashed border-2 h-14 rounded-2xl gap-2 hover:bg-secondary/50 text-muted-foreground"
-                            >
-                                <Plus className="h-4 w-4" />
-                                Ajouter un autre document
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Tips Section */}
-                    <div className="bg-secondary/20 p-6 rounded-3xl space-y-3">
-                        <h4 className="font-bold text-xs uppercase tracking-widest text-muted-foreground">💡 Conseils pour la validation</h4>
-                        <ul className="text-xs text-muted-foreground space-y-2 list-disc pl-4">
-                            <li>Assurez-vous que l'image est nette et bien éclairée.</li>
-                            <li>Toutes les informations doivent être lisibles.</li>
-                            <li>Le document ne doit pas être rogné (les 4 coins visibles).</li>
-                            <li>La validation prend généralement moins de 24h.</li>
-                        </ul>
+                                </div>
+                            );
+                        })}
                     </div>
 
                 </div>

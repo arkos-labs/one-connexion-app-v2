@@ -3,14 +3,10 @@ import SignatureCanvas from 'react-signature-canvas';
 import {
     Drawer,
     DrawerContent,
-    DrawerHeader,
-    DrawerTitle,
-    DrawerDescription,
-    DrawerFooter,
     DrawerClose
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { Camera, PenTool, X, Check, RefreshCw, ImagePlus } from "lucide-react";
+import { Camera, QrCode, Check, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 interface ProofOfDeliveryDrawerProps {
@@ -46,7 +42,6 @@ export const ProofOfDeliveryDrawer = ({ isOpen, onClose, onConfirm }: ProofOfDel
         }
 
         try {
-            // Récupère l'image de la signature en base64
             const canvas = sigCanvas.current.getCanvas();
             const dataURL = canvas.toDataURL('image/png');
 
@@ -63,7 +58,7 @@ export const ProofOfDeliveryDrawer = ({ isOpen, onClose, onConfirm }: ProofOfDel
         }
     };
 
-    // --- LOGIQUE PHOTO (Input File avec capture) ---
+    // --- LOGIQUE PHOTO ---
     const handlePhotoClick = () => {
         fileInputRef.current?.click();
     };
@@ -72,13 +67,11 @@ export const ProofOfDeliveryDrawer = ({ isOpen, onClose, onConfirm }: ProofOfDel
         const file = event.target.files?.[0];
         if (!file) return;
 
-        // Vérifier que c'est une image
         if (!file.type.startsWith('image/')) {
             toast.error("Veuillez sélectionner une image");
             return;
         }
 
-        // Convertir en base64
         const reader = new FileReader();
         reader.onload = (e) => {
             const result = e.target?.result as string;
@@ -110,75 +103,107 @@ export const ProofOfDeliveryDrawer = ({ isOpen, onClose, onConfirm }: ProofOfDel
 
     return (
         <Drawer open={isOpen} onOpenChange={(o) => !o && handleClose()}>
-            <DrawerContent className="max-h-[90vh] overflow-y-auto">
+            <DrawerContent className="bg-slate-900/98 backdrop-blur-xl border-t-2 border-slate-700/50">
                 <div className="mx-auto w-full max-w-sm pb-8">
 
-                    <DrawerHeader className="text-left">
-                        <DrawerTitle>Preuve de livraison</DrawerTitle>
-                        <DrawerDescription>
-                            {mode === 'selection' && "Choisissez une méthode pour valider la remise du colis."}
-                            {mode === 'signature' && "Demandez au client de signer dans le cadre ci-dessous."}
-                            {mode === 'photo' && "Prenez une photo du colis déposé en lieu sûr."}
-                        </DrawerDescription>
-                    </DrawerHeader>
+                    {/* Header */}
+                    <div className="p-6 pb-4 border-b border-slate-800/50">
+                        <h2 className="text-center text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-500">
+                            Course Active - Validation Livraison
+                        </h2>
+                        <p className="text-center text-sm text-slate-400 mt-2">
+                            Validez la livraison avec une preuve de remise pour terminer la course
+                        </p>
+                    </div>
 
-                    <div className="p-4">
+                    <div className="p-6">
 
                         {/* --- MODE SÉLECTION --- */}
                         {mode === 'selection' && (
-                            <div className="grid grid-cols-2 gap-4 py-4">
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Prendre une Photo */}
+                                    <button
+                                        onClick={() => setMode('photo')}
+                                        className="aspect-square bg-slate-800/50 hover:bg-slate-700 border-2 border-slate-700/50 hover:border-yellow-500/50 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group"
+                                    >
+                                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20 group-hover:scale-110 transition-transform">
+                                            <Camera className="h-8 w-8 text-slate-900" />
+                                        </div>
+                                        <span className="text-sm font-semibold text-white">Prendre<br />une Photo</span>
+                                    </button>
+
+                                    {/* Scanner un Code */}
+                                    <button
+                                        onClick={() => setMode('signature')}
+                                        className="aspect-square bg-slate-800/50 hover:bg-slate-700 border-2 border-slate-700/50 hover:border-yellow-500/50 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all group"
+                                    >
+                                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20 group-hover:scale-110 transition-transform">
+                                            <QrCode className="h-8 w-8 text-slate-900" />
+                                        </div>
+                                        <span className="text-sm font-semibold text-white">Scanner<br />un Code</span>
+                                    </button>
+                                </div>
+
+                                {/* Indicateur de progression (3 points) */}
+                                <div className="flex justify-center gap-2 pt-4">
+                                    <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                                    <div className="h-2 w-2 rounded-full bg-slate-700"></div>
+                                    <div className="h-2 w-2 rounded-full bg-slate-700"></div>
+                                </div>
+
+                                {/* Bouton Confirmer et Terminer */}
                                 <Button
-                                    variant="outline"
-                                    className="h-32 flex flex-col gap-3 hover:bg-blue-50 hover:border-blue-500 transition-all"
-                                    onClick={() => setMode('signature')}
+                                    onClick={handleClose}
+                                    className="w-full h-14 text-base font-bold rounded-2xl bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-500 hover:from-yellow-400 hover:via-yellow-500 hover:to-yellow-400 text-slate-900 shadow-lg shadow-yellow-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
                                 >
-                                    <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
-                                        <PenTool className="h-8 w-8" />
-                                    </div>
-                                    <span className="font-semibold">Signature</span>
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="h-32 flex flex-col gap-3 hover:bg-green-50 hover:border-green-500 transition-all"
-                                    onClick={() => setMode('photo')}
-                                >
-                                    <div className="p-3 bg-green-100 text-green-600 rounded-full">
-                                        <Camera className="h-8 w-8" />
-                                    </div>
-                                    <span className="font-semibold">Photo</span>
+                                    Confirmer et Terminer
                                 </Button>
                             </div>
                         )}
 
-                        {/* --- MODE SIGNATURE --- */}
+                        {/* --- MODE SIGNATURE (QR Code) --- */}
                         {mode === 'signature' && (
                             <div className="space-y-4">
-                                <div className="border-2 border-dashed border-zinc-300 rounded-xl bg-zinc-50 h-64 w-full relative touch-none">
+                                <div className="bg-slate-800/30 backdrop-blur-sm border-2 border-dashed border-slate-700/50 rounded-2xl h-64 w-full relative touch-none">
                                     <SignatureCanvas
                                         ref={sigCanvas}
-                                        penColor="black"
+                                        penColor="#fbbf24"
                                         backgroundColor="transparent"
-                                        canvasProps={{ className: 'absolute inset-0 w-full h-full rounded-xl' }}
+                                        canvasProps={{ className: 'absolute inset-0 w-full h-full rounded-2xl' }}
                                     />
-                                    <div className="absolute bottom-2 right-2 text-[10px] text-muted-foreground pointer-events-none">
-                                        Zone de signature
+                                    <div className="absolute bottom-3 right-3 text-xs text-slate-500 pointer-events-none">
+                                        Zone de signature / QR Code
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" onClick={clearSignature} className="flex-1">
+                                <div className="flex gap-3">
+                                    <Button
+                                        variant="outline"
+                                        onClick={clearSignature}
+                                        className="flex-1 h-12 bg-slate-800/50 border-slate-700/50 text-white hover:bg-slate-700"
+                                    >
                                         <RefreshCw className="h-4 w-4 mr-2" /> Effacer
                                     </Button>
-                                    <Button onClick={confirmSignature} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                                    <Button
+                                        onClick={confirmSignature}
+                                        className="flex-1 h-12 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-slate-900 font-bold"
+                                    >
                                         <Check className="h-4 w-4 mr-2" /> Valider
                                     </Button>
                                 </div>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => { setMode('selection'); setCapturedPhoto(null); }}
+                                    className="w-full text-slate-400 hover:text-white"
+                                >
+                                    Retour au choix
+                                </Button>
                             </div>
                         )}
 
-                        {/* --- MODE PHOTO (Input File avec Capture) --- */}
+                        {/* --- MODE PHOTO --- */}
                         {mode === 'photo' && (
                             <div className="space-y-4">
-                                {/* Input caché pour la capture photo */}
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -189,74 +214,68 @@ export const ProofOfDeliveryDrawer = ({ isOpen, onClose, onConfirm }: ProofOfDel
                                 />
 
                                 {!capturedPhoto ? (
-                                    // Interface de capture
                                     <div className="space-y-4">
                                         <div
-                                            className="aspect-[4/3] bg-gradient-to-br from-green-50 to-blue-50 rounded-xl relative overflow-hidden flex items-center justify-center border-2 border-dashed border-green-300 cursor-pointer hover:border-green-500 transition-all"
+                                            className="aspect-[4/3] bg-slate-800/30 backdrop-blur-sm rounded-2xl relative overflow-hidden flex items-center justify-center border-2 border-dashed border-slate-700/50 cursor-pointer hover:border-yellow-500/50 transition-all"
                                             onClick={handlePhotoClick}
                                         >
-                                            {/* Viseur décoratif */}
-                                            <div className="absolute inset-8 border-2 border-green-300/50 rounded-lg pointer-events-none" />
+                                            <div className="absolute inset-8 border-2 border-yellow-500/30 rounded-xl pointer-events-none" />
 
-                                            {/* Bouton central */}
                                             <div className="flex flex-col items-center gap-3 z-10">
-                                                <div className="h-20 w-20 rounded-full bg-green-600 hover:bg-green-700 flex items-center justify-center shadow-lg transition-all">
-                                                    <Camera className="h-10 w-10 text-white" />
+                                                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-500/30 transition-all">
+                                                    <Camera className="h-10 w-10 text-slate-900" />
                                                 </div>
-                                                <p className="text-sm font-semibold text-green-700">
+                                                <p className="text-sm font-semibold text-white">
                                                     Appuyez pour prendre une photo
                                                 </p>
                                             </div>
-
-                                            <p className="absolute bottom-4 text-xs text-green-600 bg-white/80 px-3 py-1 rounded-full">
-                                                📸 Caméra du téléphone
-                                            </p>
                                         </div>
 
-                                        <p className="text-xs text-center text-muted-foreground">
+                                        <p className="text-xs text-center text-slate-500">
                                             Votre navigateur ouvrira l'appareil photo de votre téléphone
                                         </p>
                                     </div>
                                 ) : (
-                                    // Prévisualisation de la photo
-                                    <div className="space-y-4 animate-in fade-in">
-                                        <div className="aspect-[4/3] rounded-xl overflow-hidden border-2 border-green-500 relative">
+                                    <div className="space-y-4">
+                                        <div className="aspect-[4/3] rounded-2xl overflow-hidden border-2 border-yellow-500 relative">
                                             <img
                                                 src={capturedPhoto}
                                                 alt="Photo capturée"
                                                 className="w-full h-full object-cover"
                                             />
-                                            <div className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-xs p-2 text-center flex items-center justify-center gap-2">
-                                                <ImagePlus className="h-4 w-4" /> Photo capturée
+                                            <div className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-xs p-2 text-center">
+                                                ✓ Photo capturée
                                             </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <Button variant="outline" onClick={retakePhoto} className="flex-1">
+                                        <div className="flex gap-3">
+                                            <Button
+                                                variant="outline"
+                                                onClick={retakePhoto}
+                                                className="flex-1 h-12 bg-slate-800/50 border-slate-700/50 text-white hover:bg-slate-700"
+                                            >
                                                 <RefreshCw className="h-4 w-4 mr-2" /> Reprendre
                                             </Button>
-                                            <Button onClick={confirmPhoto} className="flex-1 bg-green-600 hover:bg-green-700">
-                                                <Check className="h-4 w-4 mr-2" /> Valider la preuve
+                                            <Button
+                                                onClick={confirmPhoto}
+                                                className="flex-1 h-12 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-slate-900 font-bold"
+                                            >
+                                                <Check className="h-4 w-4 mr-2" /> Valider
                                             </Button>
                                         </div>
                                     </div>
                                 )}
+
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => { setMode('selection'); setCapturedPhoto(null); }}
+                                    className="w-full text-slate-400 hover:text-white"
+                                >
+                                    Retour au choix
+                                </Button>
                             </div>
                         )}
 
                     </div>
-
-                    <DrawerFooter>
-                        {mode !== 'selection' && (
-                            <Button variant="ghost" onClick={() => { setMode('selection'); setCapturedPhoto(null); }}>
-                                Retour au choix
-                            </Button>
-                        )}
-                        <DrawerClose asChild>
-                            <Button variant="outline">
-                                <X className="h-4 w-4 mr-2" /> Annuler
-                            </Button>
-                        </DrawerClose>
-                    </DrawerFooter>
                 </div>
             </DrawerContent>
         </Drawer>

@@ -36,12 +36,6 @@ export const createDriverSlice: StateCreator<
             expiryDate: "2025-01-01"
         },
         {
-            id: "2",
-            name: "Carte VTC",
-            status: "verified",
-            expiryDate: "2024-12-15"
-        },
-        {
             id: "3",
             name: "Assurance RC Pro",
             status: "expired",

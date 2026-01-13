@@ -288,7 +288,7 @@ export const createOrderSlice: StateCreator<
 
             console.log(`💰 [OrderSlice] Gains chauffeur: +${(priceInCents / 100).toFixed(2)}€ (40% de ${currentOrder.price}€)`);
 
-            // Set status back to online (this will keep isOnDuty = true)
+            // Set status back to online (this will also keep isOnDuty = true)
             setDriverStatus("online");
 
             set({

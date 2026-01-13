@@ -1,10 +1,6 @@
-import { useRef, useState, useMemo, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Navigation, MapPin, User, Clock, CheckCircle, XCircle, MoreVertical, MessageSquare, Headset, ChevronDown, ChevronUp, Lock, Target } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Phone, Navigation, MapPin, User, Clock, Menu, MessageSquare, Star, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Order } from "@/types";
 import { useAppPreferences } from "@/hooks/useAppPreferences";
 import { useAppStore } from "@/stores/useAppStore";
@@ -12,9 +8,9 @@ import { cn } from "@/lib/utils";
 import { ProofOfDeliveryDrawer } from "./ProofOfDeliveryDrawer";
 import { locationService } from "@/services/locationService";
 
-// Utilitaires de distance simple (Haversine simplifié)
+// Calcul de distance (Haversine)
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-  const R = 6371e3; // Rayon Terre en mètres
+  const R = 6371e3;
   const φ1 = lat1 * Math.PI / 180;
   const φ2 = lat2 * Math.PI / 180;
   const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -25,7 +21,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
     Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c; // Distance en mètres
+  return R * c;
 };
 
 interface ActiveOrderCardProps {
@@ -37,12 +33,8 @@ interface ActiveOrderCardProps {
 export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrderCardProps) => {
   const { openGPS } = useAppPreferences();
   const { driverLocation, completeOrder } = useAppStore();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [sliderConfirmed, setSliderConfirmed] = useState(false);
   const [isProofModalOpen, setIsProofModalOpen] = useState(false);
-  const [forceNearby, setForceNearby] = useState(false); // Mode test
-
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [forceNearby, setForceNearby] = useState(false);
 
   // Phases
   const isEnRoutePickup = order.status === 'accepted';
@@ -51,277 +43,204 @@ export const ActiveOrderCard = ({ order, onStatusChange, onChatOpen }: ActiveOrd
 
   const targetLocation = isPickupPhase ? order.pickupLocation : order.dropoffLocation;
 
-  /* ---------------------------------------------------------------------------
-   * AUTO-FIX: Geocoding on client side if order has missing coordinates (0,0)
-   * --------------------------------------------------------------------------- */
+  // Geocoding auto-fix
   const [fixedTargetLocation, setFixedTargetLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
 
   useEffect(() => {
     const fixMissingCoordinates = async () => {
-      // If coordinates are invalid (0,0) but we have an address string
       if (targetLocation.lat === 0 && targetLocation.lng === 0 && targetLocation.address) {
-        console.warn("⚠️ Coordinates missing for this order, attempting to geocode on device...", targetLocation.address);
         try {
           const coords = await locationService.geocodeAddress(targetLocation.address);
           if (coords) {
-            console.log("✅ Geocoding successful:", coords);
             setFixedTargetLocation({ ...coords, address: targetLocation.address });
           }
         } catch (err) {
           console.error("❌ Client-side geocoding failed", err);
         }
       } else {
-        // Reset if we switch orders and it's valid
         setFixedTargetLocation(null);
       }
     };
-
     fixMissingCoordinates();
   }, [targetLocation.address, targetLocation.lat, targetLocation.lng]);
 
-  // Use fixed location if available, otherwise original
   const effectiveTarget = fixedTargetLocation || targetLocation;
 
-  // Calcul de distance pour validation (Seuil 200m)
+  // Distance
   const distanceToTarget = useMemo(() => {
-    // If we still have 0,0 even after retry, distance remains huge/invalid
     return calculateDistance(
       driverLocation.lat, driverLocation.lng,
       effectiveTarget.lat, effectiveTarget.lng
     );
   }, [driverLocation, effectiveTarget]);
 
-  const isNearby = forceNearby || distanceToTarget < 200; // 200 mètres OU mode forcé
+  const isNearby = forceNearby || distanceToTarget < 200;
 
-  // Configuration dynamique des étapes
+  // Config dynamique
   let statusConfig;
-
   if (isEnRoutePickup) {
     statusConfig = {
-      title: "En route vers le retrait",
-      color: "text-blue-500",
-      thumbColor: "bg-blue-600",
-      bgColor: "bg-blue-500/10",
-      nextAction: "Je suis arrivé",
+      title: "EN ROUTE VERS LE RETRAIT",
+      badgeText: "EN COURSE",
+      nextAction: "JE SUIS ARRIVÉ",
       nextStatus: 'arrived_pickup' as const
     };
   } else if (isArrivedPickup) {
     statusConfig = {
-      title: "Sur place (Retrait)",
-      color: "text-orange-500",
-      thumbColor: "bg-orange-600",
-      bgColor: "bg-orange-500/10",
-      nextAction: "Confirmer la Prise en charge",
+      title: "SUR PLACE (RETRAIT)",
+      badgeText: "EN ATTENTE",
+      nextAction: "CONFIRMER LA PRISE EN CHARGE",
       nextStatus: 'in_progress' as const
     };
   } else if (order.status === 'in_progress') {
     statusConfig = {
-      title: "En route vers la livraison",
-      color: "text-green-500",
-      thumbColor: "bg-green-600",
-      bgColor: "bg-green-500/10",
-      nextAction: "Terminer la Course",
+      title: "EN ROUTE VERS LA LIVRAISON",
+      badgeText: "EN LIVRAISON",
+      nextAction: "TERMINER LA COURSE",
       nextStatus: 'completed' as const
     };
   } else {
-    // Fallback for safety (should not be visible if currentOrder logic is correct)
     statusConfig = {
-      title: "Mission en cours",
-      color: "text-zinc-500",
-      thumbColor: "bg-zinc-600",
-      bgColor: "bg-zinc-500/10",
-      nextAction: "Chargement...",
+      title: "MISSION EN COURS",
+      badgeText: "EN COURS",
+      nextAction: "CONTINUER",
       nextStatus: 'pending' as any
     };
   }
 
   const handleProofConfirmed = (proofType: 'signature' | 'photo', proofData: string) => {
-    // Collect proof data
     const proof = {
       type: proofType,
       dataUrl: proofData,
       timestamp: new Date().toISOString()
     };
-
-    // Terminer la course avec la preuve
     completeOrder(proof);
   };
 
-  const handleSlideEnd = (info: any) => {
+  const handleAction = () => {
     if (!isNearby) return;
 
-    const containerWidth = containerRef.current?.offsetWidth || 300;
-    const threshold = containerWidth * 0.7;
-
-    if (info.offset.x >= threshold) {
-      setSliderConfirmed(true);
-
-      setTimeout(() => {
-        // Intercept completion for Proof - ONLY if in the correct phase
-        if (statusConfig.nextStatus === 'completed' && order.status === 'in_progress') {
-          setIsProofModalOpen(true);
-        } else if (statusConfig.nextStatus !== 'pending') {
-          onStatusChange(order.id, statusConfig.nextStatus);
-        }
-        setSliderConfirmed(false);
-      }, 300);
+    if (statusConfig.nextStatus === 'completed' && order.status === 'in_progress') {
+      setIsProofModalOpen(true);
+    } else if (statusConfig.nextStatus !== 'pending') {
+      onStatusChange(order.id, statusConfig.nextStatus);
     }
   };
 
   return (
-    <div className="w-full">
-      <Card className="border shadow-2xl bg-card/95 backdrop-blur-xl rounded-xl overflow-hidden">
+    <div className="relative w-full">
 
-        {/* HEADER (Visible & Readable) */}
-        <div
-          className={cn("px-6 py-4 flex justify-between items-center border-b border-border/50 transition-colors", statusConfig.bgColor)}
-        >
-          <div className="flex items-center gap-3">
-            <div className={cn("h-4 w-4 rounded-full animate-pulse ring-4 ring-white/20", statusConfig.thumbColor)} />
-            <div>
-              <span className={cn("font-bold text-base uppercase tracking-wide block leading-none", statusConfig.color)}>
-                {statusConfig.title}
-              </span>
-              <span className="text-sm text-muted-foreground mt-1 flex items-center gap-1 font-medium">
-                <Navigation className="h-4 w-4" />
-                {(effectiveTarget.lat === 0 && effectiveTarget.lng === 0) ? (
-                  <span>Distance inconnue</span>
-                ) : distanceToTarget > 1000000 ? ( // > 1000km implies invalid/bugged calc (e.g. Null Island)
-                  <span>Distance inconnue</span>
-                ) : distanceToTarget > 1000 ? (
-                  `${(distanceToTarget / 1000).toFixed(1)} km`
-                ) : (
-                  `${Math.round(distanceToTarget)} m`
+      {/* Header flottant */}
+      <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
+        {/* Bouton Menu */}
+        <button className="h-10 w-10 rounded-xl bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 transition-colors">
+          <Menu className="h-5 w-5 text-white" />
+        </button>
+
+        {/* Badge EN COURSE */}
+        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-slate-900 text-xs font-bold px-4 py-2 rounded-full shadow-lg shadow-yellow-500/30 flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-slate-900 animate-pulse"></div>
+          {statusConfig.badgeText}
+        </div>
+      </div>
+
+      {/* Card principale */}
+      <div className="bg-slate-900/95 backdrop-blur-xl border-2 border-slate-700/50 rounded-3xl shadow-2xl overflow-hidden">
+
+        {/* Titre de la phase */}
+        <div className="bg-gradient-to-b from-slate-800/50 to-transparent p-4 border-b border-slate-800/50">
+          <h3 className="text-center text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-500 uppercase tracking-wider">
+            {statusConfig.title}
+          </h3>
+        </div>
+
+        <div className="p-5 space-y-4">
+
+          {/* Informations Client + Actions */}
+          <div className="flex items-center justify-between">
+            {/* Client */}
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
+                <User className="h-6 w-6 text-slate-900" />
+              </div>
+              <div>
+                <h4 className="font-bold text-white text-sm">{order.clientName}</h4>
+                <p className="text-xs text-yellow-500 flex items-center gap-1">
+                  4.85 <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                </p>
+              </div>
+            </div>
+
+            {/* Icônes d'action */}
+            <div className="flex items-center gap-2">
+              <button className="h-9 w-9 rounded-xl bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 flex items-center justify-center transition-colors">
+                <Phone className="h-4 w-4 text-slate-300" />
+              </button>
+              <button
+                onClick={onChatOpen}
+                className="h-9 w-9 rounded-xl bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 flex items-center justify-center transition-colors"
+              >
+                <MessageSquare className="h-4 w-4 text-slate-300" />
+              </button>
+              <button
+                onClick={() => openGPS(effectiveTarget.lat, effectiveTarget.lng)}
+                className="h-9 w-9 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 flex items-center justify-center transition-colors"
+              >
+                <Navigation className="h-4 w-4 text-blue-400" />
+              </button>
+
+              {/* Bouton Mode Test */}
+              <button
+                onClick={() => setForceNearby(!forceNearby)}
+                className={cn(
+                  "h-9 w-9 rounded-xl border flex items-center justify-center transition-all",
+                  forceNearby
+                    ? "bg-orange-500/30 border-orange-500/50 hover:bg-orange-500/40"
+                    : "bg-slate-800/50 border-slate-700/50 hover:bg-slate-700"
                 )}
-              </span>
+                title={forceNearby ? "Mode test activé" : "Activer le mode test"}
+              >
+                <Target className={cn(
+                  "h-4 w-4 transition-colors",
+                  forceNearby ? "text-orange-400" : "text-slate-400"
+                )} />
+              </button>
             </div>
           </div>
-          <Badge variant="outline" className="bg-background/50 backdrop-blur border-border/50 h-8 text-sm px-3">
-            <Clock className="mr-1.5 h-4 w-4" />
-            {(effectiveTarget.lat === 0 && effectiveTarget.lng === 0) ? "--" : "12 min"}
-          </Badge>
+
+          {/* Adresse */}
+          <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-3 flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
+              <MapPin className="h-4 w-4 text-yellow-400" />
+            </div>
+            <p className="text-sm text-white font-medium flex-1 leading-tight">
+              {effectiveTarget.address}
+            </p>
+          </div>
+
+          {/* Timer */}
+          <div className="flex items-center justify-center gap-2 text-slate-400">
+            <Clock className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              {(effectiveTarget.lat === 0 && effectiveTarget.lng === 0) ? "--" : "12 min"}
+            </span>
+          </div>
+
+          {/* Bouton CTA */}
+          <Button
+            onClick={handleAction}
+            disabled={!isNearby}
+            className={cn(
+              "w-full h-14 text-base font-bold rounded-2xl transition-all shadow-lg",
+              isNearby
+                ? "bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-500 hover:from-yellow-400 hover:via-yellow-500 hover:to-yellow-400 text-slate-900 shadow-yellow-500/30 hover:scale-[1.02] active:scale-[0.98]"
+                : "bg-slate-800/50 text-slate-500 cursor-not-allowed border-2 border-dashed border-slate-700/50"
+            )}
+          >
+            {isNearby ? statusConfig.nextAction : "RAPPROCHEZ-VOUS"}
+          </Button>
         </div>
-
-        {/* CORPS COMPACT */}
-        <div className="overflow-hidden">
-          <CardContent className="p-4 space-y-3">
-
-            {/* LIGNE 1 : Client + Actions */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center border border-border shadow-sm">
-                  <User className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm leading-tight">{order.clientName}</h3>
-                  <p className="text-[10px] text-muted-foreground">Premium ⭐ 4.9</p>
-                </div>
-              </div>
-
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs gap-1.5 rounded-full border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
-                onClick={onChatOpen}
-              >
-                <Headset className="h-3.5 w-3.5" />
-                Régulation
-              </Button>
-            </div>
-
-            {/* LIGNE 2 : Adresse Cible uniquement */}
-            <div className="bg-secondary/30 rounded-lg p-2.5 flex items-center justify-between gap-3 border border-border/50">
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  {isPickupPhase ? "Lieu de prise en charge" : "Destination"}
-                </p>
-                <div className="flex items-start gap-1.5">
-                  <MapPin className={cn("h-4 w-4 mt-0.5 shrink-0", isPickupPhase ? "text-blue-500" : "text-green-500")} />
-                  <p className="font-medium text-sm leading-tight truncate">
-                    {effectiveTarget.address}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  size="icon"
-                  className="h-9 w-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm shrink-0"
-                  onClick={() => openGPS(effectiveTarget.lat, effectiveTarget.lng)}
-                >
-                  <Navigation className="h-4 w-4" />
-                </Button>
-
-                {/* Bouton Mode Test - Force la proximité */}
-                <Button
-                  size="icon"
-                  variant={forceNearby ? "default" : "outline"}
-                  className={cn(
-                    "h-9 w-9 rounded-xl shadow-sm shrink-0",
-                    forceNearby
-                      ? "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
-                      : "border-orange-200 text-orange-600 hover:bg-orange-50"
-                  )}
-                  onClick={() => setForceNearby(!forceNearby)}
-                  title={forceNearby ? "Mode test activé" : "Activer le mode test"}
-                >
-                  <Target className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-
-          {/* FOOTER : Slider Large & Visible */}
-          <CardFooter className="p-6 pt-0">
-            <div
-              ref={containerRef}
-              className={cn(
-                "relative h-16 w-full rounded-full overflow-hidden p-1.5 select-none touch-none border shadow-inner transition-colors",
-                isNearby
-                  ? "bg-secondary/60 border-white/10"
-                  : "bg-muted/40 border-dashed border-white/10 cursor-not-allowed"
-              )}
-            >
-              <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
-                <span className={cn(
-                  "text-sm font-bold uppercase tracking-[0.2em] flex items-center gap-2",
-                  isNearby ? "text-muted-foreground/80 animate-pulse" : "text-muted-foreground/50"
-                )}>
-                  {isNearby ? (
-                    <>
-                      {statusConfig.nextAction}
-                      {forceNearby && <Target className="h-4 w-4 text-orange-500" />}
-                    </>
-                  ) : (
-                    <>
-                      Rapprochez-vous
-                      <Lock className="h-4 w-4" />
-                    </>
-                  )}
-                </span>
-              </div>
-
-              <motion.div
-                drag={isNearby ? "x" : false}
-                dragConstraints={containerRef}
-                dragElastic={0.05}
-                dragMomentum={false}
-                dragSnapToOrigin={!sliderConfirmed}
-                onDragEnd={(e, info) => handleSlideEnd(info)}
-                className={cn(
-                  "h-full aspect-square rounded-full shadow-lg flex items-center justify-center z-10 relative border-2 transition-all",
-                  isNearby
-                    ? cn(statusConfig.thumbColor, "cursor-grab active:cursor-grabbing border-white/20 text-white")
-                    : "bg-muted border-white/10 text-muted-foreground"
-                )}
-                animate={sliderConfirmed ? { x: "100%" } : { x: 0 }}
-              >
-                {isNearby ? <CheckCircle className="h-7 w-7" /> : <Navigation className="h-6 w-6 opacity-50" />}
-              </motion.div>
-            </div>
-          </CardFooter>
-        </div>
-      </Card>
+      </div>
 
       <ProofOfDeliveryDrawer
         isOpen={isProofModalOpen}

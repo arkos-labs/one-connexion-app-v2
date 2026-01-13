@@ -9,13 +9,11 @@ import { toast } from "sonner";
 
 const Login = () => {
     const navigate = useNavigate();
-    const { setUser } = useAppStore(); // Assuming login action is effectively setUser based on store provided earlier or need to extract it
-
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
     const [formData, setFormData] = useState({
-        email: "coursier@demo.com", // Pré-rempli pour la démo
+        email: "coursier@demo.com",
         password: "password123"
     });
 
@@ -39,49 +37,79 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen w-full flex">
+        <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
 
-            {/* CÔTÉ GAUCHE : Image / Branding (Caché sur mobile) */}
-            <div className="hidden lg:flex w-1/2 bg-zinc-900 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20 mix-blend-overlay z-10" />
-                <img
-                    src="https://images.unsplash.com/photo-1616401784845-18088ae9123c?q=80&w=1000&auto=format&fit=crop"
-                    alt="Courier working"
-                    className="w-full h-full object-cover opacity-60"
-                />
-                <div className="absolute bottom-10 left-10 z-20 text-white">
-                    <h2 className="text-4xl font-bold mb-2">One Connexion</h2>
-                    <p className="text-zinc-300 text-lg max-w-md">
-                        Rejoignez l'élite des coursiers. Gérez vos livraisons, suivez vos revenus et profitez d'une liberté totale.
-                    </p>
-                </div>
+            {/* Vagues dorées en arrière-plan */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <svg className="absolute bottom-0 right-0 w-full h-full opacity-20" viewBox="0 0 1440 800" preserveAspectRatio="none">
+                    <path
+                        fill="url(#gold-gradient)"
+                        d="M0,400 C320,300 420,500 720,400 C1020,300 1120,500 1440,400 L1440,800 L0,800 Z"
+                    />
+                    <defs>
+                        <linearGradient id="gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.3" />
+                            <stop offset="100%" stopColor="#FFD700" stopOpacity="0.1" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <svg className="absolute top-0 left-0 w-full h-full opacity-10" viewBox="0 0 1440 800" preserveAspectRatio="none">
+                    <path
+                        fill="url(#gold-gradient-2)"
+                        d="M0,200 C360,100 540,300 900,200 C1260,100 1380,300 1440,200 L1440,0 L0,0 Z"
+                    />
+                    <defs>
+                        <linearGradient id="gold-gradient-2" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#FFD700" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.1" />
+                        </linearGradient>
+                    </defs>
+                </svg>
             </div>
 
-            {/* CÔTÉ DROIT : Formulaire */}
-            <div className="flex-1 flex items-center justify-center p-8 bg-background">
-                <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-right-8 duration-700">
+            {/* Container principal du formulaire */}
+            <div className="relative z-10 w-full max-w-md mx-4">
 
-                    {/* Header Mobile */}
-                    <div className="text-center lg:text-left">
-                        <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground mb-4 shadow-lg shadow-primary/30">
-                            <Lock className="h-6 w-6" />
+                {/* Card avec glassmorphism */}
+                <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl p-8 sm:p-12">
+
+                    {/* Logo avec cadenas doré */}
+                    <div className="flex justify-center mb-8">
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 rounded-full blur-xl"></div>
+                            <div className="relative h-20 w-20 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-yellow-500/30 flex items-center justify-center">
+                                <Lock className="h-10 w-10 text-yellow-500" />
+                            </div>
                         </div>
-                        <h1 className="text-3xl font-bold tracking-tight">Espace Coursier</h1>
-                        <p className="text-muted-foreground mt-2">Connectez-vous pour commencer votre service.</p>
                     </div>
 
+                    {/* Titre */}
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl sm:text-4xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                            Espace Coursier
+                        </h1>
+                        <p className="text-slate-400 text-sm">
+                            Connectez-vous pour commencer votre service.
+                        </p>
+                    </div>
+
+                    {/* Formulaire */}
                     <form onSubmit={handleLogin} className="space-y-6">
 
-                        {/* Email */}
+                        {/* Email professionnel */}
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email professionnel</Label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Label htmlFor="email" className="text-slate-300 text-sm font-medium">
+                                Email professionnel
+                            </Label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Mail className="h-5 w-5 text-slate-500 group-focus-within:text-yellow-500 transition-colors" />
+                                </div>
                                 <Input
                                     id="email"
                                     type="email"
-                                    placeholder="nom@exemple.com"
-                                    className="pl-10 h-11 bg-secondary/30"
+                                    placeholder="coursier@demo.com"
+                                    className="pl-12 h-14 bg-slate-800/50 border-2 border-slate-700/50 text-white placeholder:text-slate-500 focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 rounded-2xl transition-all"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     required
@@ -92,15 +120,22 @@ const Login = () => {
                         {/* Mot de passe */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <Label htmlFor="password">Mot de passe</Label>
-                                <a href="#" className="text-xs font-medium text-primary hover:underline">Oublié ?</a>
+                                <Label htmlFor="password" className="text-slate-300 text-sm font-medium">
+                                    Mot de passe
+                                </Label>
+                                <a href="#" className="text-xs font-medium text-yellow-500 hover:text-yellow-400 transition-colors">
+                                    Oublié ?
+                                </a>
                             </div>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-yellow-500 transition-colors" />
+                                </div>
                                 <Input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
-                                    className="pl-10 pr-10 h-11 bg-secondary/30"
+                                    placeholder="••••••••"
+                                    className="pl-12 pr-12 h-14 bg-slate-800/50 border-2 border-slate-700/50 text-white placeholder:text-slate-500 focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 rounded-2xl transition-all"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     required
@@ -108,52 +143,53 @@ const Login = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-yellow-500 transition-colors"
                                 >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Bouton Action */}
-                        <div className="space-y-3">
-                            <Button
-                                type="submit"
-                                className="w-full h-12 text-base shadow-lg shadow-primary/20 transition-all hover:scale-[1.01]"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                        Connexion...
-                                    </>
-                                ) : (
-                                    <>
-                                        Accéder à mon compte
-                                        <ChevronRight className="ml-2 h-5 w-5" />
-                                    </>
-                                )}
-                            </Button>
-
-
-                        </div>
+                        {/* Bouton de connexion */}
+                        <Button
+                            type="submit"
+                            className="w-full h-14 text-base font-semibold bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-500 hover:from-yellow-400 hover:via-yellow-500 hover:to-yellow-400 text-slate-900 shadow-lg shadow-yellow-500/30 rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] border-0"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                    Connexion en cours...
+                                </>
+                            ) : (
+                                <>
+                                    Accéder à mon compte
+                                    <ChevronRight className="ml-2 h-5 w-5" />
+                                </>
+                            )}
+                        </Button>
                     </form>
 
-                    {/* Footer Inscription */}
-                    <div className="text-center pt-2">
-                        <p className="text-sm text-muted-foreground">
+                    {/* Footer - Devenir coursier */}
+                    <div className="mt-8 text-center">
+                        <p className="text-sm text-slate-400">
                             Pas encore partenaire ?{" "}
-                            <Link to="/register" className="font-semibold text-primary hover:underline">
+                            <Link
+                                to="/register"
+                                className="font-semibold text-yellow-500 hover:text-yellow-400 transition-colors"
+                            >
                                 Devenir coursier
                             </Link>
                         </p>
                     </div>
 
-                    {/* Footer Légal */}
-                    <div className="flex justify-center gap-6 pt-8 text-xs text-muted-foreground/50">
-                        <a href="#" className="hover:text-muted-foreground">Conditions</a>
-                        <a href="#" className="hover:text-muted-foreground">Confidentialité</a>
-                        <a href="#" className="hover:text-muted-foreground">Aide</a>
+                    {/* Liens légaux */}
+                    <div className="mt-6 flex items-center justify-center gap-4 text-xs text-slate-500">
+                        <a href="#" className="hover:text-yellow-500 transition-colors">Conditions</a>
+                        <span>•</span>
+                        <a href="#" className="hover:text-yellow-500 transition-colors">Confidentialité</a>
+                        <span>•</span>
+                        <a href="#" className="hover:text-yellow-500 transition-colors">Aide</a>
                     </div>
                 </div>
             </div>

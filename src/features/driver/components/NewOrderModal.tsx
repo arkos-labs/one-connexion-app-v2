@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/stores/useAppStore";
 import { Order } from "@/types";
-import { MapPin, Navigation, Timer } from "lucide-react";
+import { MapPin, Navigation, X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface NewOrderModalProps {
@@ -26,17 +26,17 @@ export const NewOrderModal = ({ order, onAccept, onReject }: NewOrderModalProps)
       return;
     }
 
-    // Timer de 45 secondes pour accepter (plus confortable pour le chauffeur)
+    // Timer de 30 secondes pour accepter
     const timer = setInterval(() => {
       setProgress((prev) => {
         if (prev <= 0) {
-          clearInterval(timer); // Sécurité: arrêter le timer immédiatement
-          console.log("⏱️ [NewOrderModal] Temps écoulé (45s), refus automatique");
+          clearInterval(timer);
+          console.log("⏱️ [NewOrderModal] Temps écoulé (30s), refus automatique");
           if (onReject) onReject(incomingOrder.id);
           else rejectOrder(incomingOrder.id);
           return 0;
         }
-        return prev - (100 / 450); // ~45 secondes (100 ticks par seconde * 45 / 10 = non, 10 ticks/s donc 450 ticks total)
+        return prev - (100 / 300); // 30 secondes (10 ticks/s * 30 = 300 ticks)
       });
     }, 100);
 
@@ -73,90 +73,116 @@ export const NewOrderModal = ({ order, onAccept, onReject }: NewOrderModalProps)
     }
   };
 
+  const timeRemaining = Math.ceil((progress / 100) * 30);
+
   return (
     <Dialog open={!!incomingOrder} onOpenChange={() => { }}>
       <DialogContent
-        className="max-w-[90%] sm:max-w-md border-none shadow-[0_35px_60px_-15px_rgba(0,0,0,0.6)] bg-card p-6 !z-[9999]"
+        className="max-w-[90%] sm:max-w-md border-2 border-slate-700/50 shadow-2xl bg-slate-900/98 backdrop-blur-xl p-0 !z-[9999] overflow-hidden"
         style={{ pointerEvents: 'auto', borderRadius: '24px' }}
-        onPointerDownCapture={(e) => console.log("🎯 Clic capturé sur DialogContent")}
       >
-        <DialogHeader>
-          <DialogTitle className="text-center text-xl font-bold flex items-center justify-center gap-2">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-            Nouvelle Course !
+        {/* Header avec bouton fermer */}
+        <DialogHeader className="relative bg-gradient-to-b from-slate-800/50 to-transparent p-4 pb-3 border-b border-slate-800/50">
+          <button
+            onClick={handleReject}
+            className="absolute top-3 right-3 h-8 w-8 rounded-full bg-slate-800/50 hover:bg-slate-700 flex items-center justify-center transition-colors"
+          >
+            <X className="h-4 w-4 text-slate-400" />
+          </button>
+          <DialogTitle className="text-center text-sm font-medium text-slate-400 uppercase tracking-wider">
+            Nouvelle Course - Offre
           </DialogTitle>
-          <DialogDescription className="text-center">
-            À {incomingOrder.distance || 'quelques minutes'} de votre position
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Prix - Affichage Uniquement du Gain Net Chauffeur (40% du prix client) */}
-          <div className="text-center">
-            <span className="text-4xl font-extrabold text-green-600">{(incomingOrder.price * 0.40).toFixed(2)} €</span>
-            <div className="flex items-center justify-center gap-2 mt-1">
-              <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest bg-secondary px-2 py-0.5 rounded">Gain Net</span>
+        <div className="p-6 space-y-5">
+
+          {/* Prix principal - ÉNORME et doré */}
+          <div className="text-center py-4">
+            <div className="relative inline-block">
+              {/* Effet de brillance en arrière-plan */}
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-500/30 to-yellow-400/20 blur-3xl"></div>
+
+              <div className="relative">
+                <span className="text-6xl font-black bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(234,179,8,0.5)]">
+                  {(incomingOrder.price * 0.40).toFixed(2)} €
+                </span>
+              </div>
+            </div>
+
+            {/* Badge CASH NET */}
+            <div className="flex justify-center mt-3">
+              <span className="text-xs font-bold text-slate-900 uppercase tracking-wider bg-gradient-to-r from-yellow-400 to-yellow-500 px-4 py-1.5 rounded-full shadow-lg shadow-yellow-500/30">
+                CASH NET
+              </span>
             </div>
           </div>
 
-          {/* Trajet */}
-          <div className="space-y-4 bg-secondary/20 p-4 rounded-xl">
-            <div className="flex gap-3">
-              <MapPin className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs text-muted-foreground font-bold uppercase">Départ</p>
-                <p className="font-medium text-sm">{incomingOrder.pickupLocation.address}</p>
+          {/* Informations de trajet */}
+          <div className="space-y-3 bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 p-4 rounded-2xl">
+            {/* Départ */}
+            <div className="flex gap-3 items-start">
+              <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <MapPin className="h-4 w-4 text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mb-0.5">DÉPART</p>
+                <p className="font-medium text-sm text-white leading-tight">{incomingOrder.pickupLocation.address}</p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <Navigation className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs text-muted-foreground font-bold uppercase">Arrivée</p>
-                <p className="font-medium text-sm">{incomingOrder.dropoffLocation.address}</p>
+
+            {/* Barre de progression du temps */}
+            <div className="relative py-2">
+              <div className="h-0.5 bg-slate-700/50 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 transition-all duration-100 ease-linear"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+              <div className="absolute right-0 -top-1 text-xs font-bold text-yellow-500">
+                {timeRemaining}s
+              </div>
+            </div>
+
+            {/* Arrivée */}
+            <div className="flex gap-3 items-start">
+              <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <Navigation className="h-4 w-4 text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-0.5">ARRIVÉE</p>
+                <p className="font-medium text-sm text-white leading-tight">{incomingOrder.dropoffLocation.address}</p>
               </div>
             </div>
           </div>
 
-          {/* Timer Visuel */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><Timer className="h-3 w-3" /> Temps restant</span>
-              <span>{Math.ceil((progress / 100) * 45)}s</span>
-            </div>
-            <Progress value={progress} className="h-2" />
+          {/* Boutons d'action */}
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            {/* Bouton Refuser */}
+            <Button
+              variant="outline"
+              className="h-12 border-2 border-yellow-500/30 bg-transparent hover:bg-yellow-500/10 text-yellow-500 hover:text-yellow-400 font-semibold rounded-xl transition-all"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReject();
+              }}
+              disabled={loading}
+            >
+              {loading ? "..." : "Refuser"}
+            </Button>
+
+            {/* Bouton ACCEPTER */}
+            <Button
+              className="h-12 bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-500 hover:from-yellow-400 hover:via-yellow-500 hover:to-yellow-400 text-slate-900 font-bold text-base shadow-lg shadow-yellow-500/30 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] border-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAccept();
+              }}
+              disabled={loading}
+            >
+              {loading ? "Chargement..." : "ACCEPTER"}
+            </Button>
           </div>
         </div>
-
-        <DialogFooter className="grid grid-cols-2 gap-4 pt-4 !pointer-events-auto">
-          <Button
-            variant="outline"
-            className="w-full h-14 text-red-500 hover:text-red-600 hover:bg-red-50 border-2 border-red-100 font-bold"
-            onClick={(e) => {
-              console.log("👆 Refuser cliqué");
-              e.stopPropagation();
-              handleReject();
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            disabled={loading}
-          >
-            {loading ? "..." : "Refuser"}
-          </Button>
-          <Button
-            className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg active:scale-95 transition-transform"
-            onClick={(e) => {
-              console.log("👆 Accepter cliqué");
-              e.stopPropagation();
-              handleAccept();
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            disabled={loading}
-          >
-            {loading ? "Chargement..." : "ACCEPTER"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

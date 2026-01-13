@@ -1,40 +1,25 @@
 import {
     Bell,
-    Shield,
     Moon,
-    Smartphone,
     LogOut,
     ChevronRight,
     Mail,
-    Lock,
-    MapPin
+    MessageSquare,
+    Volume2,
+    User,
+    ArrowLeft
 } from "lucide-react";
 import { useAppStore } from "@/stores/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useNavigate } from "react-router-dom";
 
 export const SettingsPage = () => {
+    const navigate = useNavigate();
     const { user, preferences, updatePreference, logout, currentOrder } = useAppStore();
-
-    const handleNavigationChange = (value: string) => {
-        updatePreference('navigationApp', value);
-        toast({
-            title: "Préférence GPS mise à jour",
-            description: `Le bouton GPS ouvrira désormais ${value === 'waze' ? 'Waze' : value === 'apple_maps' ? 'Apple Maps' : 'Google Maps'}.`
-        });
-    };
-
-    const handleAutoAccept = (checked: boolean) => {
-        updatePreference('autoAccept', checked);
-        toast({
-            title: checked ? "Acceptation Auto activée ⚡" : "Acceptation Auto désactivée",
-            description: checked ? "Les courses proches seront acceptées automatiquement." : "Vous devrez accepter chaque course manuellement."
-        });
-    };
 
     const handleLogout = () => {
         const success = logout();
@@ -48,167 +33,155 @@ export const SettingsPage = () => {
     };
 
     return (
-        <div className="p-6 max-w-3xl mx-auto pb-24 animate-in fade-in duration-500">
-
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
-                <p className="text-muted-foreground">Personnalisez votre expérience de conduite.</p>
-            </div>
-
-            {/* 1. Carte de Profil */}
-            <Card className="mb-8 overflow-hidden border-none shadow-md bg-gradient-to-r from-zinc-900 to-zinc-800 text-white">
-                <div className="p-6 flex items-center gap-5">
-                    <Avatar className="h-20 w-20 border-4 border-white/10 shadow-xl">
-                        <AvatarImage src={user?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.fullName}`} />
-                        <AvatarFallback className="bg-primary text-xl font-bold">{user?.fullName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                        <h2 className="text-2xl font-bold">{user?.fullName || "Coursier"}</h2>
-                        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
-                            <Mail className="h-3 w-3" />
-                            {user?.email}
-                        </div>
-                        <div className="flex gap-2">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary text-primary-foreground uppercase tracking-wider">
-                                {user?.role === 'driver' ? 'Coursier Pro' : 'Utilisateur'}
-                            </span>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/20 text-white uppercase tracking-wider">
-                                ID: {user?.id?.slice(0, 6)}...
-                            </span>
-                        </div>
+        <div className="flex flex-col h-full bg-slate-950">
+            {/* Header */}
+            <div className="sticky top-0 z-30 px-6 pt-8 pb-4 bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/50">
+                <div className="flex items-center gap-4 mb-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate('/driver')}
+                        className="rounded-xl hover:bg-slate-800"
+                    >
+                        <ArrowLeft className="h-5 w-5 text-white" />
+                    </Button>
+                    <div>
+                        <h1 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-500">
+                            Paramètres
+                        </h1>
+                        <p className="text-xs text-slate-400">Personnalisez votre expérience de conduite</p>
                     </div>
                 </div>
-            </Card>
+            </div>
 
-            <div className="space-y-6">
+            <ScrollArea className="flex-1 px-6">
+                <div className="space-y-6 pt-6 pb-24">
 
-                {/* 2. Navigation & Conduite */}
-                <section>
-                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-                        Conduite & GPS
-                    </h3>
-                    <Card className="divide-y">
-                        {/* Choix du GPS */}
-                        <div className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
-                                    <MapPin className="h-5 w-5" />
+                    {/* Section Profil */}
+                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-slate-700/50 p-6 shadow-2xl">
+                        <div className="flex items-center gap-4 mb-4">
+                            <Avatar className="h-16 w-16 border-4 border-yellow-500/50 shadow-lg shadow-yellow-500/20">
+                                <AvatarImage src={user?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.fullName}`} />
+                                <AvatarFallback className="bg-gradient-to-br from-yellow-400 to-yellow-600 text-slate-900 text-xl font-bold">
+                                    {user?.fullName?.charAt(0) || 'C'}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                                <h2 className="text-xl font-bold text-white">{user?.fullName || "Chauffeur"}</h2>
+                                <p className="text-xs text-slate-400">{user?.email}</p>
+                            </div>
+                        </div>
+                        <Button className="w-full h-10 rounded-xl border-2 border-yellow-500/50 bg-transparent hover:bg-yellow-500/10 text-yellow-400 font-semibold">
+                            Modifier le profil
+                        </Button>
+                    </div>
+
+                    {/* PRÉFÉRENCES */}
+                    <div>
+                        <h3 className="font-bold text-xs uppercase tracking-widest text-slate-400 px-2 mb-3">
+                            PRÉFÉRENCES
+                        </h3>
+
+                        <div className="space-y-3">
+                            {/* Recevoir les notifications push */}
+                            <div className="bg-slate-900/50 backdrop-blur-sm border-2 border-slate-800/50 rounded-2xl p-4 flex items-center justify-between hover:border-yellow-500/30 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                                        <Bell className="h-5 w-5 text-yellow-400" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm text-white">Recevoir les notifications push</p>
+                                    </div>
+                                </div>
+                                <Switch
+                                    checked={preferences.soundEnabled}
+                                    onCheckedChange={(c) => updatePreference('soundEnabled', c)}
+                                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-yellow-500 data-[state=checked]:to-yellow-600"
+                                />
+                            </div>
+
+                            {/* Notifications par SMS et EMAIL */}
+                            <div className="bg-slate-900/50 backdrop-blur-sm border-2 border-slate-800/50 rounded-2xl p-4 flex items-center justify-between hover:border-yellow-500/30 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                                        <MessageSquare className="h-5 w-5 text-yellow-400" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm text-white">Notifications par SMS et EMAIL</p>
+                                    </div>
+                                </div>
+                                <Switch
+                                    checked={true}
+                                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-yellow-500 data-[state=checked]:to-yellow-600"
+                                />
+                            </div>
+
+                            {/* Mode Sombre */}
+                            <div className="bg-slate-900/50 backdrop-blur-sm border-2 border-slate-800/50 rounded-2xl p-4 flex items-center justify-between hover:border-yellow-500/30 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                                        <Moon className="h-5 w-5 text-yellow-400" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm text-white">Mode Sombre</p>
+                                    </div>
+                                </div>
+                                <Switch
+                                    checked={true}
+                                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-yellow-500 data-[state=checked]:to-yellow-600"
+                                />
+                            </div>
+
+                            {/* Sons & Notifications */}
+                            <div className="bg-slate-900/50 backdrop-blur-sm border-2 border-slate-800/50 rounded-2xl p-4 flex items-center justify-between hover:border-yellow-500/30 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                                        <Volume2 className="h-5 w-5 text-yellow-400" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm text-white">Sons & Notifications</p>
+                                    </div>
+                                </div>
+                                <Switch
+                                    checked={preferences.soundEnabled}
+                                    onCheckedChange={(c) => updatePreference('soundEnabled', c)}
+                                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-yellow-500 data-[state=checked]:to-yellow-600"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* AIDE */}
+                    <div>
+                        <h3 className="font-bold text-xs uppercase tracking-widest text-slate-400 px-2 mb-3">
+                            AIDE
+                        </h3>
+
+                        <div className="bg-slate-900/50 backdrop-blur-sm border-2 border-slate-800/50 rounded-2xl p-4 flex items-center justify-between hover:border-yellow-500/30 transition-colors cursor-pointer">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                                    <MessageSquare className="h-5 w-5 text-yellow-400" />
                                 </div>
                                 <div>
-                                    <p className="font-medium text-sm">Application GPS par défaut</p>
-                                    <p className="text-xs text-muted-foreground">Celle qui s'ouvrira pour le guidage</p>
+                                    <p className="font-semibold text-sm text-white">Contacter le support</p>
                                 </div>
                             </div>
-                            <Select
-                                value={preferences.navigationApp}
-                                onValueChange={handleNavigationChange}
-                            >
-                                <SelectTrigger className="w-[140px] h-9 text-xs font-medium">
-                                    <SelectValue placeholder="Choisir" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="google_maps">Google Maps</SelectItem>
-                                    <SelectItem value="waze">Waze</SelectItem>
-                                    <SelectItem value="apple_maps">Apple Maps</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <ChevronRight className="h-5 w-5 text-slate-400" />
                         </div>
+                    </div>
 
-                        {/* Auto Accept */}
-                        <div className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 rounded-xl">
-                                    <Smartphone className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-sm">Acceptation Automatique</p>
-                                    <p className="text-xs text-muted-foreground">Accepter les courses dans un rayon de 2km</p>
-                                </div>
-                            </div>
-                            <Switch
-                                checked={preferences.autoAccept}
-                                onCheckedChange={handleAutoAccept}
-                            />
-                        </div>
-                    </Card>
-                </section>
-
-                {/* 3. Apparence & Système */}
-                <section>
-                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-                        Interface
-                    </h3>
-                    <Card className="divide-y">
-
-
-                        <div className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-xl">
-                                    <Bell className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-sm">Sons & Notifications</p>
-                                    <p className="text-xs text-muted-foreground">Sonnerie à l'approche d'une commande</p>
-                                </div>
-                            </div>
-                            <Switch
-                                checked={preferences.soundEnabled}
-                                onCheckedChange={(c) => updatePreference('soundEnabled', c)}
-                            />
-                        </div>
-                    </Card>
-                </section>
-
-                {/* 4. Sécurité & Compte */}
-                <section>
-                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-                        Sécurité
-                    </h3>
-                    <Card className="divide-y">
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-secondary/50 transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 rounded-xl">
-                                    <Lock className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-sm">Mot de passe</p>
-                                    <p className="text-xs text-muted-foreground">Dernière modification il y a 30 jours</p>
-                                </div>
-                            </div>
-                            <Button variant="ghost" size="sm" className="h-8">Modifier</Button>
-                        </div>
-
-                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-secondary/50 transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 rounded-xl">
-                                    <Shield className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-sm">Données personnelles</p>
-                                    <p className="text-xs text-muted-foreground">Demander une copie de mes données</p>
-                                </div>
-                            </div>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                    </Card>
-                </section>
-
-                {/* Zone de Danger (Déconnexion) */}
-                <div className="pt-6">
+                    {/* Bouton Déconnexion */}
                     <Button
                         variant="destructive"
-                        className="w-full h-12 text-base font-semibold shadow-sm"
+                        className="w-full h-14 text-base font-bold rounded-2xl bg-red-600 hover:bg-red-700 text-white shadow-lg"
                         onClick={handleLogout}
                     >
                         <LogOut className="mr-2 h-5 w-5" />
-                        Se déconnecter
+                        Déconnexion
                     </Button>
-                    <p className="text-center text-[10px] text-muted-foreground mt-4">
-                        Version 2.4.0 (Build 20241220) • ArkOS Labs
-                    </p>
-                </div>
 
-            </div>
+                </div>
+            </ScrollArea>
         </div>
     );
 };

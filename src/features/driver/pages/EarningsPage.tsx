@@ -1,33 +1,16 @@
 import { useMemo } from "react";
 import { useAppStore } from "@/stores/useAppStore";
 import {
-    TrendingUp,
     ArrowLeft,
-    Wallet,
-    Calendar,
-    ArrowUpRight,
     Download,
-    Info
+    Wallet
 } from "lucide-react";
-import {
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer
-} from 'recharts';
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-
-
 
 export const EarningsPage = () => {
     const navigate = useNavigate();
@@ -50,10 +33,6 @@ export const EarningsPage = () => {
             const date = new Date(ride.createdAt);
             const dayName = days[date.getDay()];
             if (dataMap.has(dayName)) {
-                // Règle des 40% pour le graphique : Le chauffeur ne touche que 40% du prix total de la course
-                // priceInCents est le prix TOTAL client (ex: 825 pour 8.25€)
-                // Donc on calcule : 825 * 0.4 = 330 cents (3.30€)
-                // Puis conversion en Euros pour le chart : 330 / 100 = 3.3
                 const netEarnings = (ride.priceInCents * 0.4) / 100;
                 dataMap.set(dayName, dataMap.get(dayName)! + netEarnings);
             }
@@ -63,12 +42,12 @@ export const EarningsPage = () => {
     }, [history]);
 
     const weeklyTotal = chartData.reduce((acc, curr) => acc + curr.total, 0) * 100;
+    const maxValue = Math.max(...chartData.map(d => d.total));
 
     const handleExport = () => {
         try {
             const doc = new jsPDF();
 
-            // Header
             doc.setFontSize(20);
             doc.text("Relevé de Gains - One Connexion", 14, 22);
 
@@ -77,14 +56,11 @@ export const EarningsPage = () => {
             doc.text(`Date d'export : ${new Date().toLocaleDateString('fr-FR')}`, 14, 30);
             doc.text(`Solde disponible : ${formatPrice(earningsInCents)}`, 14, 36);
 
-            // Table
             const tableColumn = ["Date", "ID Course", "Montant", "Statut"];
             const tableRows = history.map(ride => [
                 new Date(ride.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + new Date(ride.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
                 "#" + ride.id.slice(0, 8),
-                // CRITIQUE : Affichage du GAIN CHAUFFEUR (40%) et non du prix total client
-                // RAPPEL : ride.priceInCents = Prix Client Total
-                formatPrice((ride.priceInCents * 0.4)), // Gain Net (40%)
+                formatPrice((ride.priceInCents * 0.4)),
                 "Terminée"
             ]);
 
@@ -94,7 +70,7 @@ export const EarningsPage = () => {
                 startY: 45,
                 theme: 'grid',
                 styles: { fontSize: 10, cellPadding: 3 },
-                headStyles: { fillColor: [22, 163, 74] } // Green color
+                headStyles: { fillColor: [234, 179, 8] }
             });
 
             doc.save(`releve-gains-${new Date().toISOString().split('T')[0]}.pdf`);
@@ -106,25 +82,25 @@ export const EarningsPage = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-background/50 backdrop-blur-xl">
+        <div className="flex flex-col h-full bg-slate-950">
             {/* Header */}
-            <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/10 p-4">
+            <div className="sticky top-0 z-30 px-6 pt-8 pb-4 bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/50">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => navigate('/driver')}
-                            className="rounded-full"
+                            className="rounded-xl hover:bg-slate-800"
                         >
-                            <ArrowLeft className="h-5 w-5" />
+                            <ArrowLeft className="h-5 w-5 text-white" />
                         </Button>
-                        <h1 className="text-2xl font-bold tracking-tight">Mes Revenus</h1>
+                        <h1 className="text-lg font-bold text-white">Mes Revenus</h1>
                     </div>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-full gap-2 border-border/10"
+                        className="rounded-full gap-2 bg-slate-800/50 border-slate-700/50 text-white hover:bg-slate-700"
                         onClick={handleExport}
                     >
                         <Download className="h-4 w-4" />
@@ -133,137 +109,94 @@ export const EarningsPage = () => {
                 </div>
             </div>
 
-            <ScrollArea className="flex-1 px-4 py-6">
-                <div className="max-w-4xl mx-auto space-y-6">
+            <ScrollArea className="flex-1 px-6">
+                <div className="space-y-6 pt-6 pb-24">
 
-                    {/* Main Balance Card */}
-                    <Card className="relative overflow-hidden border-none bg-gradient-to-br from-primary/95 to-primary shadow-2xl text-primary-foreground">
-                        <div className="absolute top-0 right-0 p-8 opacity-10">
-                            <Wallet className="h-32 w-32" />
+                    {/* Card Principale - Revenus du Mois */}
+                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-slate-700/50 p-6 shadow-2xl">
+                        {/* Icône Wallet en arrière-plan */}
+                        <div className="absolute top-4 right-4 opacity-10">
+                            <Wallet className="h-32 w-32 text-yellow-500" />
                         </div>
-                        <CardHeader className="pb-2">
-                            <p className="text-sm font-medium opacity-80 uppercase tracking-widest">Solde disponible</p>
-                            <CardTitle className="text-4xl font-black">
+
+                        <div className="relative z-10">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Revenus du mois</p>
+                            <h2 className="text-5xl font-black text-white mb-6">
                                 {formatPrice(earningsInCents)}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-2 mt-2">
-                                <Badge variant="secondary" className="bg-white/20 text-white hover:bg-white/30 border-none">
-                                    Prochain virement : Lundi
-                                </Badge>
-                            </div>
-                            <Button className="w-full mt-6 bg-white text-primary hover:bg-white/90 font-bold rounded-xl h-12 shadow-lg">
+                            </h2>
+
+                            {/* Bouton CTA */}
+                            <Button className="w-full h-14 text-base font-bold rounded-2xl bg-gradient-to-r from-yellow-500 via-yellow-600 to-yellow-500 hover:from-yellow-400 hover:via-yellow-500 hover:to-yellow-400 text-slate-900 shadow-lg shadow-yellow-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
                                 Demander un virement express
                             </Button>
-                        </CardContent>
-                    </Card>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <Card className="bg-card/40 border-border/10">
-                            <CardContent className="p-4">
-                                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Cette semaine</p>
-                                <div className="flex items-end justify-between">
-                                    <span className="text-xl font-bold">{formatPrice(weeklyTotal)}</span>
-                                    <span className="text-xs text-green-500 font-bold flex items-center gap-1">
-                                        +12% <TrendingUp className="h-3 w-3" />
-                                    </span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card className="bg-card/40 border-border/10">
-                            <CardContent className="p-4">
-                                <p className="text-xs text-muted-foreground font-bold uppercase mb-1">Courses</p>
-                                <div className="flex items-end justify-between">
-                                    <span className="text-xl font-bold">{history.length}</span>
-                                    <span className="text-xs text-muted-foreground font-medium">7 derniers jours</span>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        </div>
                     </div>
 
-                    {/* Chart Section */}
-                    <Card className="bg-card/40 border-border/10">
-                        <CardHeader className="flex flex-row items-center justify-between pb-8">
-                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                <Calendar className="h-4 w-4" /> Activité Hebdomadaire
-                            </CardTitle>
-                            <Info className="h-4 w-4 text-muted-foreground/50" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-[250px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
-                                        <XAxis
-                                            dataKey="name"
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                                        />
-                                        <YAxis
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: 'hsl(var(--background))',
-                                                borderColor: 'hsl(var(--border))',
-                                                borderRadius: '12px',
-                                                fontSize: '12px'
-                                            }}
-                                        />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="total"
-                                            stroke="hsl(var(--primary))"
-                                            strokeWidth={3}
-                                            fillOpacity={1}
-                                            fill="url(#colorTotal)"
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Recent List Placeholder */}
-                    <div className="space-y-4">
-                        <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground px-2">Dernières transactions</h3>
-                        <div className="space-y-2">
-                            <div className="space-y-2">
-                                {history.length === 0 ? (
-                                    <p className="text-center text-muted-foreground p-4">Aucune transaction récente</p>
-                                ) : (
-                                    history.slice(0, 5).map((ride, i) => (
-                                        <div key={ride.id} className="flex items-center justify-between p-4 bg-card/20 rounded-2xl border border-border/5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                                                    <ArrowUpRight className="h-5 w-5 text-green-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-sm">Course #{ride.id.slice(0, 6)}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Terminée • {new Date(ride.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <span className="font-bold text-sm text-green-500">
-                                                +{formatPrice(ride.priceInCents * 0.4)}
-                                            </span>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
+                    {/* Stats Rapides */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-900/50 backdrop-blur-sm border-2 border-slate-800/50 rounded-2xl p-4">
+                            <p className="text-xs text-slate-400 font-bold uppercase mb-2">Revenus disponibles</p>
+                            <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">
+                                {formatPrice(earningsInCents)}
+                            </span>
                         </div>
+                        <div className="bg-slate-900/50 backdrop-blur-sm border-2 border-slate-800/50 rounded-2xl p-4">
+                            <p className="text-xs text-slate-400 font-bold uppercase mb-2">Courses réalisées</p>
+                            <span className="text-2xl font-black text-white">
+                                {history.length}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Graphique en Barres */}
+                    <div className="bg-slate-900/50 backdrop-blur-sm border-2 border-slate-800/50 rounded-3xl p-6">
+                        <div className="h-48 flex items-end justify-between gap-2">
+                            {chartData.map((day, idx) => {
+                                const heightPercent = maxValue > 0 ? (day.total / maxValue) * 100 : 0;
+                                return (
+                                    <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                                        <div className="w-full flex items-end justify-center" style={{ height: '160px' }}>
+                                            <div
+                                                className="w-full bg-gradient-to-t from-yellow-500 to-yellow-400 rounded-t-lg transition-all hover:from-yellow-400 hover:to-yellow-300"
+                                                style={{ height: `${heightPercent}%`, minHeight: day.total > 0 ? '8px' : '0px' }}
+                                            ></div>
+                                        </div>
+                                        <span className="text-xs font-semibold text-slate-400">{day.name}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Label */}
+                    <h3 className="font-bold text-xs uppercase tracking-widest text-slate-400 px-2">
+                        VERSEMENTS DE COURSES RÉCENTES
+                    </h3>
+
+                    {/* Liste de Courses */}
+                    <div className="space-y-3">
+                        {history.length === 0 ? (
+                            <p className="text-center text-slate-400 p-4">Aucune transaction récente</p>
+                        ) : (
+                            history.slice(0, 5).map((ride, i) => (
+                                <div key={ride.id} className="flex items-center justify-between p-4 bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-2xl hover:bg-slate-800/50 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
+                                            <Wallet className="h-5 w-5 text-slate-900" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm text-white">Course #{ride.id.slice(0, 3)} - {new Date(ride.createdAt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })}</p>
+                                            <p className="text-xs text-slate-400">
+                                                Terminée
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">
+                                        {formatPrice(ride.priceInCents * 0.4)}
+                                    </span>
+                                </div>
+                            ))
+                        )}
                     </div>
 
                 </div>
